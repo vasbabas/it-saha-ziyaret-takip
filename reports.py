@@ -300,7 +300,7 @@ def build_dataframe(visits: list[dict]) -> pd.DataFrame:
         "subject":     "Konu",
         "work_notes":  "Yapılan İşlemler",
         "duration":    "Süre",
-        "technician":  "Teknisyen",
+        "technician":  "Kategori",
         "status":      "Durum",
     }
     df.rename(columns=col_rename, inplace=True)
