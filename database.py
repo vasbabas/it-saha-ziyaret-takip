@@ -7,6 +7,8 @@ SQLite tabanli veri saklama, sorgulama ve yonetim fonksiyonlari.
 
 import sqlite3
 import os
+import shutil
+import glob
 from datetime import date, datetime
 from typing import Optional
 
@@ -77,11 +79,25 @@ def init_db():
         )
     """)
 
+    # Firma IP & BT Envanter Defteri tablosu
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS company_notes (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            company     TEXT    NOT NULL UNIQUE,
+            ip_subnet   TEXT    DEFAULT '',
+            vpn_details TEXT    DEFAULT '',
+            credentials TEXT    DEFAULT '',
+            other_notes TEXT    DEFAULT '',
+            updated_at  TEXT    DEFAULT (datetime('now', 'localtime'))
+        )
+    """)
+
     # Performans icin indeksler (sik sorgulanan sutunlar)
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_visits_date    ON visits(visit_date)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_visits_company ON visits(company)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_reminders_date ON reminders(remind_date)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_todos_done     ON todos(is_done)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_visits_date      ON visits(visit_date)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_visits_company   ON visits(company)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_reminders_date   ON reminders(remind_date)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_todos_done       ON todos(is_done)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_comp_notes_co    ON company_notes(company)")
 
     conn.commit()
     conn.close()
@@ -563,3 +579,141 @@ def get_todo_stats() -> dict:
     done = cursor.fetchone()[0]
     conn.close()
     return {"pending": pending, "overdue": overdue, "done": done}
+
+
+# ---------------------------------------------------------------------------
+# Firma IP & BT Envanter Defteri (Company Notes) CRUD
+# ---------------------------------------------------------------------------
+
+def get_company_notes(company: str) -> Optional[dict]:
+    """Belirli bir firmaya ait IP, VPN ve diger BT envanter notlarini dondurur."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM company_notes WHERE LOWER(company) = ?", (company.strip().lower(),))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def save_company_notes(company: str, ip_subnet: str = "", vpn_details: str = "", credentials: str = "", other_notes: str = ""):
+    """Firma BT envanter notlarini kaydeder (varsa gunceller, yoksa ekler)."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute(
+        """
+        INSERT INTO company_notes (company, ip_subnet, vpn_details, credentials, other_notes, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(company) DO UPDATE SET
+            ip_subnet = excluded.ip_subnet,
+            vpn_details = excluded.vpn_details,
+            credentials = excluded.credentials,
+            other_notes = excluded.other_notes,
+            updated_at = excluded.updated_at
+        """,
+        (company.strip(), ip_subnet.strip(), vpn_details.strip(), credentials.strip(), other_notes.strip(), now),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_company_notes(company: str):
+    """Bir firmaya ait BT envanter notlarini siler."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM company_notes WHERE LOWER(company) = ?", (company.strip().lower(),))
+    conn.commit()
+    conn.close()
+
+
+def get_all_company_notes() -> list:
+    """Kayitli tum firma envanter notlarini listeler."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM company_notes ORDER BY company ASC")
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Yedekleme Yonetimi (Backup Management)
+# ---------------------------------------------------------------------------
+
+def create_backup() -> str:
+    """Mevcut visits.db veritabanini backups/ dizinine yedekler."""
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    backup_dir = os.path.join(project_dir, "backups")
+    if not os.path.exists(backup_dir):
+        os.makedirs(backup_dir)
+    
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_filename = f"visits_backup_{timestamp}.db"
+    backup_path = os.path.join(backup_dir, backup_filename)
+    
+    # SQLite yazim islemlerinin bitmesini garanti altina almak icin baglanti acip kapatilabilir
+    # ama shutil.copy2 yerel kullanimda yeterince guvenlidir.
+    shutil.copy2(DB_PATH, backup_path)
+    return backup_filename
+
+
+def list_backups() -> list:
+    """Mevcut yedek veritabanlarini listeler."""
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    backup_dir = os.path.join(project_dir, "backups")
+    if not os.path.exists(backup_dir):
+        return []
+    
+    files = glob.glob(os.path.join(backup_dir, "visits_backup_*.db"))
+    backups = []
+    for f in files:
+        stat = os.stat(f)
+        filename = os.path.basename(f)
+        ts_str = filename.replace("visits_backup_", "").replace(".db", "")
+        try:
+            dt = datetime.strptime(ts_str, "%Y%m%d_%H%M%S").strftime("%d.%m.%Y %H:%M:%S")
+        except:
+            dt = datetime.fromtimestamp(stat.st_mtime).strftime("%d.%m.%Y %H:%M:%S")
+            
+        backups.append({
+            "filename": filename,
+            "filepath": f,
+            "date": dt,
+            "size": f"{stat.st_size / 1024:.1f} KB"
+        })
+    return sorted(backups, key=lambda x: x["filename"], reverse=True)
+
+
+def delete_backup(filename: str) -> bool:
+    """Belirtilen yedek dosyasini kalici olarak siler."""
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    backup_path = os.path.join(project_dir, "backups", filename)
+    if os.path.exists(backup_path) and os.path.basename(backup_path).startswith("visits_backup_"):
+        os.remove(backup_path)
+        return True
+    return False
+
+
+def restore_backup(filename: str) -> bool:
+    """Belirtilen yedek dosyasini ana visits.db olarak geri yukler."""
+    project_dir = os.path.dirname(os.path.abspath(__file__))
+    backup_path = os.path.join(project_dir, "backups", filename)
+    if os.path.exists(backup_path) and os.path.basename(backup_path).startswith("visits_backup_"):
+        # Geri yuklemeden once mevcut durumu guvenlik amaciyla gecici olarak yedekle
+        temp_backup = os.path.join(project_dir, "backups", "temp_before_restore.db")
+        if os.path.exists(DB_PATH):
+            shutil.copy2(DB_PATH, temp_backup)
+        
+        try:
+            shutil.copy2(backup_path, DB_PATH)
+            if os.path.exists(temp_backup):
+                os.remove(temp_backup)
+            return True
+        except Exception as e:
+            # Hata durumunda gecici yedekten geri don
+            if os.path.exists(temp_backup):
+                shutil.copy2(temp_backup, DB_PATH)
+                os.remove(temp_backup)
+            raise e
+    return False
+

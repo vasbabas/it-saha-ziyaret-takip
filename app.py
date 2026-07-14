@@ -712,7 +712,7 @@ def tab_reports():
     st.dataframe(dfr, use_container_width=True, hide_index=True, height=min(400, 60+len(dfr)*38))
 
     st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
-    d1,d2,_ = st.columns([1,1,4])
+    d1,d2,d3,_ = st.columns([1.2, 1.2, 1.5, 3.1])
     ts = datetime.now().strftime('%Y%m%d_%H%M')
     with d1:
         st.download_button("📥 Excel Raporu (.xlsx)",
@@ -724,6 +724,11 @@ def tab_reports():
         st.download_button("📄 PDF Raporu (.pdf)",
             data=rpt.export_to_pdf(dfr, title=title),
             file_name=f"it_faaliyet_{ts}.pdf",
+            mime="application/pdf", use_container_width=True)
+    with d3:
+        st.download_button("📊 Şık PDF Sunumu",
+            data=rpt.export_executive_pdf(visits, cached_summary_stats(), title=title),
+            file_name=f"it_sunum_{ts}.pdf",
             mime="application/pdf", use_container_width=True)
 
 
@@ -1137,31 +1142,149 @@ def tab_global_search():
 
 
 # ─────────────────────────────────────────────
+# SEKME 9 — BT ENVANTER DEFTERI
+# ─────────────────────────────────────────────
+
+def tab_inventory():
+    st.markdown('<div class="section-title" style="font-size:15px">🔑 Firma IP & BT Envanter Defteri</div>', unsafe_allow_html=True)
+    cos = cached_companies()
+    
+    col_sel, col_add = st.columns([2, 1], gap="medium")
+    
+    with col_sel:
+        if cos:
+            sel_co = st.selectbox("📂 Kayitli Firma Secin", [""] + cos, key="inv_co_select")
+        else:
+            sel_co = ""
+            st.info("💡 Henuz kayitli firma yok. Once faaliyet kaydi ekleyin veya yeni envanter tanimlayin.")
+            
+    with col_add:
+        new_co = st.text_input("➕ Veya Yeni Firma Tanimla:", placeholder="Yeni firma adi...")
+    
+    active_co = new_co.strip() or sel_co
+    
+    if active_co:
+        notes = db.get_company_notes(active_co)
+        
+        with st.form(f"inv_form_{active_co}"):
+            st.markdown(f"### 🏢 {active_co} — BT Altyapi ve Erisim Bilgileri")
+            ip_subnet = st.text_input("🌐 IP Bloklari / Local Subnet", value=notes.get("ip_subnet", "") if notes else "", placeholder="Orn: 192.168.10.0/24, Gateway: 10.1")
+            vpn_details = st.text_area("🔒 VPN / Uzak Baglanti Bilgileri", value=notes.get("vpn_details", "") if notes else "", placeholder="Orn: SSL VPN adresi, Cisco AnyConnect, AnyDesk ID...")
+            credentials = st.text_area("🔑 Cihaz & Giris Bilgileri / Notlar", value=notes.get("credentials", "") if notes else "", placeholder="Orn: Firewall Admin, Switch IP ve erisim portlari...")
+            other_notes = st.text_area("📝 Diger BT Notlari", value=notes.get("other_notes", "") if notes else "", placeholder="Orn: BT Sorumlusu Iletisim, Lisans tarihleri...")
+            
+            sub_save, sub_del = st.columns(2)
+            with sub_save:
+                save_btn = st.form_submit_button("💾 Bilgileri Kaydet", type="primary", use_container_width=True)
+            with sub_del:
+                del_btn = st.form_submit_button("🗑️ Notlari Sil", use_container_width=True)
+                
+            if save_btn:
+                db.save_company_notes(active_co, ip_subnet, vpn_details, credentials, other_notes)
+                invalidate_caches()
+                st.success(f"✅ {active_co} BT envanter bilgileri basariyla kaydedildi!")
+                st.rerun()
+                
+            if del_btn:
+                db.delete_company_notes(active_co)
+                invalidate_caches()
+                st.warning(f"🗑️ {active_co} envanter bilgileri silindi.")
+                st.rerun()
+    else:
+        st.info("💡 Bilgilerini goruntulemek veya duzenlemek istediginiz firmayi yukaridan secin veya yeni bir tane girin.")
+        
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📂 Tum Firma BT Notlari Hizli Listesi</div>', unsafe_allow_html=True)
+    all_notes = db.get_all_company_notes()
+    if all_notes:
+        for n in all_notes:
+            with st.expander(f"🏢 {n['company']} — En Son Guncelleme: {n.get('updated_at', '—')}"):
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.markdown(f"**🌐 Local Subnet:** `{n.get('ip_subnet') or '—'}`")
+                    st.markdown(f"**🔒 VPN / Erisim:**\n```\n{n.get('vpn_details') or '—'}\n```")
+                with c2:
+                    st.markdown(f"**🔑 Erisim Bilgileri:**\n```\n{n.get('credentials') or '—'}\n```")
+                    st.markdown(f"**📝 Diger Notlar:** {n.get('other_notes') or '—'}")
+    else:
+        st.caption("Henuz envanter defterinde kayit bulunmuyor.")
+
+
+# ─────────────────────────────────────────────
+# SEKME 10 — SISTEM YEDEKLER
+# ─────────────────────────────────────────────
+
+def tab_backups():
+    st.markdown('<div class="section-title" style="font-size:15px">💾 Veritabani Yedekleme ve Sistem Yonetimi</div>', unsafe_allow_html=True)
+    
+    c1, c2 = st.columns([1, 2], gap="large")
+    
+    with c1:
+        st.markdown("#### 💾 Yeni Yedek Olustur")
+        st.write("Veritabani dosyasinin tam bir kopyasini backups/ klasorune kaydeder. Veri kaybi yasamamak icin duzenli yedek almaniz onerilir.")
+        if st.button("💾 Veritabanini Simdi Yedekle", type="primary", use_container_width=True):
+            fn = db.create_backup()
+            st.success(f"✅ Yeni yedek basariyla olusturuldu: {fn}")
+            st.rerun()
+            
+    with c2:
+        st.markdown("#### 📋 Mevcut Sistem Yedekleri")
+        backups = db.list_backups()
+        if not backups:
+            st.info("📭 Henuz olusturulmus bir yedek dosyasi bulunmuyor.")
+        else:
+            for b in backups:
+                bc1, bc2, bc3 = st.columns([3, 1, 1])
+                with bc1:
+                    st.markdown(
+                        f"<div class='card' style='margin:0 0 4px; padding:10px 14px'>"
+                        f"📁 <b>{b['filename']}</b><br>"
+                        f"<small style='color:rgba(160,200,240,.6)'>Tarih: {b['date']} · Boyut: {b['size']}</small></div>",
+                        unsafe_allow_html=True
+                    )
+                with bc2:
+                    if st.button("↩️ Geri Yukle", key=f"rest_{b['filename']}", help="Bu yedek dosyasini aktif veritabani olarak geri yukler"):
+                        if db.restore_backup(b['filename']):
+                            invalidate_caches()
+                            st.success("✅ Veritabanı yedekten basariyla geri yuklendi! Sayfa yenileniyor...")
+                            st.rerun()
+                with bc3:
+                    if st.button("🗑️ Sil", key=f"del_bak_{b['filename']}", help="Yedek dosyasini kalici olarak siler"):
+                        if db.delete_backup(b['filename']):
+                            st.warning("🗑️ Yedek dosyasi silindi.")
+                            st.rerun()
+
+
+# ─────────────────────────────────────────────
 # ANA UYGULAMA
 # ─────────────────────────────────────────────
 
 def main():
     app_header()
 
-    t1,t2,t3,t4,t5,t6,t7,t8 = st.tabs([
+    t1,t2,t3,t4,t5,t6,t7,t8,t9,t10 = st.tabs([
         "🏠 Ozet & Analiz",
         "➕ Yeni BT Kaydi",
         "📊 Raporlama & Sunum",
+        "🔑 BT Envanter Defteri",
         "🗂️ Tum Gunlukler",
         "🔔 Hatirlaticilarim",
         "🗓️ Faaliyet Takvimi",
         "📋 Gorev Listem",
         "🔎 Detayli Arama",
+        "💾 Sistem Yedekleme",
     ])
 
     with t1: tab_dashboard()
     with t2: tab_new_visit()
     with t3: tab_reports()
-    with t4: tab_all_records()
-    with t5: tab_reminders()
-    with t6: tab_calendar()
-    with t7: tab_todos()
-    with t8: tab_global_search()
+    with t4: tab_inventory()
+    with t5: tab_all_records()
+    with t6: tab_reminders()
+    with t7: tab_calendar()
+    with t8: tab_todos()
+    with t9: tab_global_search()
+    with t10: tab_backups()
 
 
 if __name__ == "__main__":
