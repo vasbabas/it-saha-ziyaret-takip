@@ -310,7 +310,8 @@ h3 { font-size: 1.0rem !important; font-weight: 600 !important; }
 }
 
 /* ── Sidebar Navigasyon Butonlari Stili ──────── */
-section[data-testid="stSidebar"] {
+[data-testid="stSidebar"][aria-expanded="true"],
+[data-testid="stSidebar"][aria-expanded="false"] {
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
@@ -321,17 +322,21 @@ section[data-testid="stSidebar"] {
     border-right: 2px solid rgba(33, 150, 243, 0.2) !important;
     transform: translateX(-280px) !important; /* 20px strip handle remains */
     transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    display: block !important;
+    visibility: visible !important;
 }
 
 /* Hover to open */
-section[data-testid="stSidebar"]:hover {
+[data-testid="stSidebar"][aria-expanded="true"]:hover,
+[data-testid="stSidebar"][aria-expanded="false"]:hover {
     transform: translateX(0) !important;
     border-right: 2px solid rgba(33, 150, 243, 0.5) !important;
     box-shadow: 10px 0 35px rgba(0,0,0,0.6) !important;
 }
 
 /* Hamburger indicator on the left strip */
-section[data-testid="stSidebar"]::after {
+[data-testid="stSidebar"][aria-expanded="true"]::after,
+[data-testid="stSidebar"][aria-expanded="false"]::after {
     content: "☰";
     position: absolute;
     top: 24px;
@@ -342,7 +347,8 @@ section[data-testid="stSidebar"]::after {
     transition: opacity 0.2s;
     font-weight: bold;
 }
-section[data-testid="stSidebar"]:hover::after {
+[data-testid="stSidebar"][aria-expanded="true"]:hover::after,
+[data-testid="stSidebar"][aria-expanded="false"]:hover::after {
     opacity: 0;
 }
 
