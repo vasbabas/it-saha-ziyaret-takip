@@ -310,10 +310,58 @@ h3 { font-size: 1.0rem !important; font-weight: 600 !important; }
 }
 
 /* ── Sidebar Navigasyon Butonlari Stili ──────── */
-[data-testid="stSidebar"] {
+section[data-testid="stSidebar"] {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 300px !important;
+    z-index: 99999 !important;
     background-color: #060B12 !important;
-    border-right: 1px solid rgba(255,255,255,0.06) !important;
+    border-right: 2px solid rgba(33, 150, 243, 0.2) !important;
+    transform: translateX(-280px) !important; /* 20px strip handle remains */
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
+
+/* Hover to open */
+section[data-testid="stSidebar"]:hover {
+    transform: translateX(0) !important;
+    border-right: 2px solid rgba(33, 150, 243, 0.5) !important;
+    box-shadow: 10px 0 35px rgba(0,0,0,0.6) !important;
+}
+
+/* Hamburger indicator on the left strip */
+section[data-testid="stSidebar"]::after {
+    content: "☰";
+    position: absolute;
+    top: 24px;
+    right: 4px;
+    font-size: 14px;
+    color: rgba(96, 180, 255, 0.7);
+    pointer-events: none;
+    transition: opacity 0.2s;
+    font-weight: bold;
+}
+section[data-testid="stSidebar"]:hover::after {
+    opacity: 0;
+}
+
+/* Shift main content to take full space always */
+section[data-testid="stMain"] {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-left: 35px !important; /* spacing for hover handle */
+    transition: padding-left 0.4s ease !important;
+}
+
+/* Hide streamlit close and toggle buttons */
+button[data-testid="stSidebarCollapseButton"] {
+    display: none !important;
+}
+div[data-testid="collapsedControl"] {
+    display: none !important;
+}
+
 [data-testid="stSidebar"] div[role="radiogroup"] {
     gap: 7px !important;
 }
