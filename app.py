@@ -22,27 +22,8 @@ st.set_page_config(
     page_title="Kisisel IT Saha Takip",
     page_icon="💻",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
-
-# Programatik olarak sol bari acik tutmak icin JavaScript yardimcisi
-import streamlit.components.v1 as components
-components.html("""
-<script>
-    function forceExpand() {
-        try {
-            window.parent.localStorage.setItem("stSidebarCollapsed", "false");
-            var expandBtn = window.parent.document.querySelector('div[data-testid="collapsedControl"] button');
-            if (expandBtn) {
-                expandBtn.click();
-            }
-        } catch(e) {}
-    }
-    setTimeout(forceExpand, 100);
-    setTimeout(forceExpand, 400);
-    setTimeout(forceExpand, 800);
-</script>
-""", height=0)
 
 # ─────────────────────────────────────────────
 # Performans: @st.cache_data (TTL = saniye)
@@ -328,97 +309,57 @@ h3 { font-size: 1.0rem !important; font-weight: 600 !important; }
     .stButton > button { padding: 11px !important; font-size: 13.5px !important; }
 }
 
-/* ── Sidebar Navigasyon Butonlari Stili ──────── */
+/* Hide native sidebar and collapse controls entirely */
+[data-testid="stSidebar"],
 [data-testid="stSidebar"][aria-expanded="true"],
-[data-testid="stSidebar"][aria-expanded="false"] {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    height: 100vh !important;
-    width: 300px !important;
-    z-index: 99999 !important;
-    background-color: #060B12 !important;
-    border-right: 2px solid rgba(33, 150, 243, 0.2) !important;
-    transform: translateX(-280px) !important; /* 20px strip handle remains */
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
-    display: block !important;
-    visibility: visible !important;
-}
-
-/* Hover to open */
-[data-testid="stSidebar"][aria-expanded="true"]:hover,
-[data-testid="stSidebar"][aria-expanded="false"]:hover {
-    transform: translateX(0) !important;
-    border-right: 2px solid rgba(33, 150, 243, 0.5) !important;
-    box-shadow: 10px 0 35px rgba(0,0,0,0.6) !important;
-}
-
-/* Hamburger indicator on the left strip */
-[data-testid="stSidebar"][aria-expanded="true"]::after,
-[data-testid="stSidebar"][aria-expanded="false"]::after {
-    content: "☰";
-    position: absolute;
-    top: 24px;
-    right: 4px;
-    font-size: 14px;
-    color: rgba(96, 180, 255, 0.7);
-    pointer-events: none;
-    transition: opacity 0.2s;
-    font-weight: bold;
-}
-[data-testid="stSidebar"][aria-expanded="true"]:hover::after,
-[data-testid="stSidebar"][aria-expanded="false"]:hover::after {
-    opacity: 0;
-}
-
-/* Shift main content to take full space always */
-section[data-testid="stMain"] {
-    margin-left: 0 !important;
-    width: 100% !important;
-    padding-left: 35px !important; /* spacing for hover handle */
-    transition: padding-left 0.4s ease !important;
-}
-
-/* Hide streamlit close and toggle buttons */
+[data-testid="stSidebar"][aria-expanded="false"],
+div[data-testid="collapsedControl"],
 button[data-testid="stSidebarCollapseButton"] {
     display: none !important;
 }
-div[data-testid="collapsedControl"] {
-    display: none !important;
+
+/* ── Custom Sidebar Navigasyon Paneli Tasarimi ── */
+.nav-container {
+    background: rgba(255,255,255,0.02) !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+    border-radius: 20px !important;
+    padding: 16px !important;
+    backdrop-filter: blur(10px) !important;
+    margin-bottom: 20px !important;
 }
 
-[data-testid="stSidebar"] div[role="radiogroup"] {
-    gap: 7px !important;
-}
-[data-testid="stSidebar"] div[role="radiogroup"] label {
-    background: rgba(255,255,255,0.02) !important;
-    border: 1px solid rgba(255,255,255,0.05) !important;
+/* Custom Navigasyon Butonlari */
+.nav-container div[data-testid="stButton"] button {
+    text-align: left !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
     border-radius: 12px !important;
     padding: 9px 15px !important;
+    font-size: 13.5px !important;
+    font-weight: 500 !important;
+    margin-bottom: 5px !important;
     transition: all 0.2s ease !important;
-    width: 100% !important;
-    margin: 0 !important;
 }
-[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+
+/* Aktif Sekme Butonu (Primary) */
+.nav-container div[data-testid="stButton"] button[kind="primary"] {
+    background: linear-gradient(135deg, #1565C0 0%, #1E88E5 100%) !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(30,136,229,0.25) !important;
+    color: #FFFFFF !important;
+}
+
+/* Aktif Olmayan Sekme Butonlari (Secondary) */
+.nav-container div[data-testid="stButton"] button[kind="secondary"] {
+    background: transparent !important;
+    border: 1px solid rgba(255,255,255,0.05) !important;
+    color: rgba(180,205,230,0.7) !important;
+}
+.nav-container div[data-testid="stButton"] button[kind="secondary"]:hover {
     background: rgba(255,255,255,0.06) !important;
     border-color: rgba(33,150,243,0.2) !important;
-    transform: translateX(2px);
-}
-[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
-    background: linear-gradient(135deg, #1565C0 0%, #1E88E5 100%) !important;
-    border-color: transparent !important;
-    box-shadow: 0 4px 15px rgba(30,136,229,0.3) !important;
-}
-[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] span {
     color: #FFFFFF !important;
-    font-weight: 600 !important;
-}
-/* Hide the default circular radio indicator */
-[data-testid="stSidebar"] div[role="radiogroup"] label [class*="StyledRadio"] {
-    display: none !important;
-}
-[data-testid="stSidebar"] div[role="radiogroup"] label div[role="presentation"] {
-    display: none !important;
+    transform: translateX(3px) !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -1372,76 +1313,100 @@ def tab_backups():
 # ─────────────────────────────────────────────
 
 def main():
-    # ── SİDEBAR NAVİGASYON PANELI ──
-    with st.sidebar:
-        st.markdown("""
-        <div style='text-align:center; padding: 10px 0 20px 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 20px;'>
-            <div style='font-size:38px; margin-bottom:8px;'>💻</div>
-            <h2 style='margin:0; font-size:1.15rem; background: linear-gradient(90deg, #60B4FF, #B39DDB); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight:700;'>
-                IT Günlüğüm
-            </h2>
-            <span style='font-size:11px; color:rgba(180,210,240,0.45); font-weight:500;'>KİŞİSEL ÇALIŞMA & KONTROL</span>
-        </div>
-        """, unsafe_allow_html=True)
+    # ── Session State Kontrolleri ──
+    if "active_tab" not in st.session_state:
+        st.session_state.active_tab = "🏠 Özet & Analiz"
+    if "show_sidebar" not in st.session_state:
+        st.session_state.show_sidebar = True
 
-        menu_options = [
-            "🏠 Özet & Analiz",
-            "➕ Yeni BT Kaydı",
-            "📊 Raporlama & Sunum",
-            "🔑 BT Envanter Defteri",
-            "🗂️ Tüm Günlükler",
-            "🔔 Hatırlatıcılarım",
-            "🗓️ Faaliyet Takvimi",
-            "📋 Görev Listem",
-            "🔎 Detaylı Arama",
-            "💾 Sistem Yedekleme"
-        ]
-        
-        choice = st.radio("NAVİGASYON", menu_options, label_visibility="collapsed")
+    # ── RENDER YARDIMCISI ──
+    def render_active_tab(tab_name):
+        if tab_name == "🏠 Özet & Analiz":
+            tab_dashboard()
+        elif tab_name == "➕ Yeni BT Kaydı":
+            tab_new_visit()
+        elif tab_name == "📊 Raporlama & Sunum":
+            tab_reports()
+        elif tab_name == "🔑 BT Envanter Defteri":
+            tab_inventory()
+        elif tab_name == "🗂️ Tüm Günlükler":
+            tab_all_records()
+        elif tab_name == "🔔 Hatırlatıcılarım":
+            tab_reminders()
+        elif tab_name == "🗓️ Faaliyet Takvimi":
+            tab_calendar()
+        elif tab_name == "📋 Görev Listem":
+            tab_todos()
+        elif tab_name == "🔎 Detaylı Arama":
+            tab_global_search()
+        elif tab_name == "💾 Sistem Yedekleme":
+            tab_backups()
 
-        # Sistem durumu özeti
-        st.markdown("<br>", unsafe_allow_html=True)
-        due_r = cached_due_reminders()
-        td_stats = cached_todo_stats()
+    # ── ÜST BAŞLIK & KONTROLLER ──
+    # Başlık ve Menü Açma/Kapama butonu tek satırda şık bir şekilde listelenir
+    col_head_left, col_head_right = st.columns([8.2, 1.8])
+    with col_head_left:
+        app_header()
+    with col_head_right:
+        st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
+        toggle_lbl = "📂 Menüyü Kapat" if st.session_state.show_sidebar else "📂 Menüyü Göster"
+        if st.button(toggle_lbl, key="nav_sidebar_toggle", type="secondary"):
+            st.session_state.show_sidebar = not st.session_state.show_sidebar
+            st.rerun()
+
+    # ── DİNAMİK YERLEŞİM (SÜTUN SİSTEMİ) ──
+    if st.session_state.show_sidebar:
+        col_nav, col_content = st.columns([1.1, 3.8], gap="medium")
         
-        status_html = ""
-        if due_r:
-            status_html += f"<div style='font-size:11px; color:#EF5350; margin-bottom:6px;'>🔔 {len(due_r)} Hatırlatıcı</div>"
-        if td_stats.get("overdue", 0):
-            status_html += f"<div style='font-size:11px; color:#FF9800; margin-bottom:6px;'>📋 {td_stats['overdue']} Gecikmiş Görev</div>"
-        if not due_r and not td_stats.get("overdue", 0):
-            status_html += "<div style='font-size:11px; color:#66BB6A; font-weight:500;'>✅ Tüm işler güncel!</div>"
+        with col_nav:
+            st.markdown('<div class="nav-container">', unsafe_allow_html=True)
+            st.markdown('<p style="font-size:10.5px; color:rgba(180,210,240,0.4); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; margin: 0 0 10px 0;">NAVİGASYON</p>', unsafe_allow_html=True)
             
-        st.markdown(f"""
-        <div style='background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; margin-top:20px;'>
-            <span style='font-size:9.5px; color:rgba(180,210,240,0.4); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;'>SİSTEM DURUMU</span>
-            <div style='margin-top:6px;'>{status_html}</div>
-        </div>
-        """, unsafe_allow_html=True)
+            menu_items = [
+                ("🏠 Özet & Analiz", "🏠 Özet & Analiz"),
+                ("➕ Yeni BT Kaydı", "➕ Yeni BT Kaydı"),
+                ("📊 Raporlama & Sunum", "📊 Raporlama & Sunum"),
+                ("🔑 BT Envanter Defteri", "🔑 BT Envanter Defteri"),
+                ("🗂️ Tüm Günlükler", "🗂️ Tüm Günlükler"),
+                ("🔔 Hatırlatıcılarım", "🔔 Hatırlatıcılarım"),
+                ("🗓️ Faaliyet Takvimi", "🗓️ Faaliyet Takvimi"),
+                ("📋 Görev Listem", "📋 Görev Listem"),
+                ("🔎 Detaylı Arama", "🔎 Detaylı Arama"),
+                ("💾 Sistem Yedekleme", "💾 Sistem Yedekleme")
+            ]
+            
+            for label, tab_name in menu_items:
+                is_active = st.session_state.active_tab == tab_name
+                btn_type = "primary" if is_active else "secondary"
+                if st.button(label, key=f"nav_btn_{tab_name}", type=btn_type):
+                    st.session_state.active_tab = tab_name
+                    st.rerun()
 
-    # ── ANA İÇERİK PANALİ RENDER ──
-    app_header()
-
-    if choice == "🏠 Özet & Analiz":
-        tab_dashboard()
-    elif choice == "➕ Yeni BT Kaydı":
-        tab_new_visit()
-    elif choice == "📊 Raporlama & Sunum":
-        tab_reports()
-    elif choice == "🔑 BT Envanter Defteri":
-        tab_inventory()
-    elif choice == "🗂️ Tüm Günlükler":
-        tab_all_records()
-    elif choice == "🔔 Hatırlatıcılarım":
-        tab_reminders()
-    elif choice == "🗓️ Faaliyet Takvimi":
-        tab_calendar()
-    elif choice == "📋 Görev Listem":
-        tab_todos()
-    elif choice == "🔎 Detaylı Arama":
-        tab_global_search()
-    elif choice == "💾 Sistem Yedekleme":
-        tab_backups()
+            # Sol panel altındaki sistem durumu kartı
+            due_r = cached_due_reminders()
+            td_stats = cached_todo_stats()
+            status_html = ""
+            if due_r:
+                status_html += f"<div style='font-size:11px; color:#EF5350; margin-bottom:5px;'>🔔 {len(due_r)} Hatırlatıcı</div>"
+            if td_stats.get("overdue", 0):
+                status_html += f"<div style='font-size:11px; color:#FF9800; margin-bottom:5px;'>📋 {td_stats['overdue']} Gecikmiş</div>"
+            if not due_r and not td_stats.get("overdue", 0):
+                status_html += "<div style='font-size:11px; color:#66BB6A; font-weight:500;'>✅ Tüm işler güncel!</div>"
+                
+            st.markdown(f"""
+            <div style='background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; margin-top:16px;'>
+                <span style='font-size:9.5px; color:rgba(180,210,240,0.4); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;'>SİSTEM DURUMU</span>
+                <div style='margin-top:5px;'>{status_html}</div>
+            </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+        with col_content:
+            render_active_tab(st.session_state.active_tab)
+            
+    else:
+        # Menü gizliyken içerik tam ekran genişliğinde gösterilir
+        render_active_tab(st.session_state.active_tab)
 
 
 if __name__ == "__main__":
