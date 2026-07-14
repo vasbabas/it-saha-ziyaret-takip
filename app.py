@@ -25,6 +25,25 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Programatik olarak sol bari acik tutmak icin JavaScript yardimcisi
+import streamlit.components.v1 as components
+components.html("""
+<script>
+    function forceExpand() {
+        try {
+            window.parent.localStorage.setItem("stSidebarCollapsed", "false");
+            var expandBtn = window.parent.document.querySelector('div[data-testid="collapsedControl"] button');
+            if (expandBtn) {
+                expandBtn.click();
+            }
+        } catch(e) {}
+    }
+    setTimeout(forceExpand, 100);
+    setTimeout(forceExpand, 400);
+    setTimeout(forceExpand, 800);
+</script>
+""", height=0)
+
 # ─────────────────────────────────────────────
 # Performans: @st.cache_data (TTL = saniye)
 # ─────────────────────────────────────────────
