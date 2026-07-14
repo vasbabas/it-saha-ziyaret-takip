@@ -308,6 +308,45 @@ h3 { font-size: 1.0rem !important; font-weight: 600 !important; }
     [data-testid="stMetricValue"] { font-size: 1.3rem !important; }
     .stButton > button { padding: 11px !important; font-size: 13.5px !important; }
 }
+
+/* ── Sidebar Navigasyon Butonlari Stili ──────── */
+[data-testid="stSidebar"] {
+    background-color: #060B12 !important;
+    border-right: 1px solid rgba(255,255,255,0.06) !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] {
+    gap: 7px !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label {
+    background: rgba(255,255,255,0.02) !important;
+    border: 1px solid rgba(255,255,255,0.05) !important;
+    border-radius: 12px !important;
+    padding: 9px 15px !important;
+    transition: all 0.2s ease !important;
+    width: 100% !important;
+    margin: 0 !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: rgba(255,255,255,0.06) !important;
+    border-color: rgba(33,150,243,0.2) !important;
+    transform: translateX(2px);
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] {
+    background: linear-gradient(135deg, #1565C0 0%, #1E88E5 100%) !important;
+    border-color: transparent !important;
+    box-shadow: 0 4px 15px rgba(30,136,229,0.3) !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label[data-checked="true"] span {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+}
+/* Hide the default circular radio indicator */
+[data-testid="stSidebar"] div[role="radiogroup"] label [class*="StyledRadio"] {
+    display: none !important;
+}
+[data-testid="stSidebar"] div[role="radiogroup"] label div[role="presentation"] {
+    display: none !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -1260,31 +1299,76 @@ def tab_backups():
 # ─────────────────────────────────────────────
 
 def main():
+    # ── SİDEBAR NAVİGASYON PANELI ──
+    with st.sidebar:
+        st.markdown("""
+        <div style='text-align:center; padding: 10px 0 20px 0; border-bottom: 1px solid rgba(255,255,255,0.08); margin-bottom: 20px;'>
+            <div style='font-size:38px; margin-bottom:8px;'>💻</div>
+            <h2 style='margin:0; font-size:1.15rem; background: linear-gradient(90deg, #60B4FF, #B39DDB); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight:700;'>
+                IT Günlüğüm
+            </h2>
+            <span style='font-size:11px; color:rgba(180,210,240,0.45); font-weight:500;'>KİŞİSEL ÇALIŞMA & KONTROL</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+        menu_options = [
+            "🏠 Özet & Analiz",
+            "➕ Yeni BT Kaydı",
+            "📊 Raporlama & Sunum",
+            "🔑 BT Envanter Defteri",
+            "🗂️ Tüm Günlükler",
+            "🔔 Hatırlatıcılarım",
+            "🗓️ Faaliyet Takvimi",
+            "📋 Görev Listem",
+            "🔎 Detaylı Arama",
+            "💾 Sistem Yedekleme"
+        ]
+        
+        choice = st.radio("NAVİGASYON", menu_options, label_visibility="collapsed")
+
+        # Sistem durumu özeti
+        st.markdown("<br>", unsafe_allow_html=True)
+        due_r = cached_due_reminders()
+        td_stats = cached_todo_stats()
+        
+        status_html = ""
+        if due_r:
+            status_html += f"<div style='font-size:11px; color:#EF5350; margin-bottom:6px;'>🔔 {len(due_r)} Hatırlatıcı</div>"
+        if td_stats.get("overdue", 0):
+            status_html += f"<div style='font-size:11px; color:#FF9800; margin-bottom:6px;'>📋 {td_stats['overdue']} Gecikmiş Görev</div>"
+        if not due_r and not td_stats.get("overdue", 0):
+            status_html += "<div style='font-size:11px; color:#66BB6A; font-weight:500;'>✅ Tüm işler güncel!</div>"
+            
+        st.markdown(f"""
+        <div style='background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; margin-top:20px;'>
+            <span style='font-size:9.5px; color:rgba(180,210,240,0.4); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;'>SİSTEM DURUMU</span>
+            <div style='margin-top:6px;'>{status_html}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # ── ANA İÇERİK PANALİ RENDER ──
     app_header()
 
-    t1,t2,t3,t4,t5,t6,t7,t8,t9,t10 = st.tabs([
-        "🏠 Ozet & Analiz",
-        "➕ Yeni BT Kaydi",
-        "📊 Raporlama & Sunum",
-        "🔑 BT Envanter Defteri",
-        "🗂️ Tum Gunlukler",
-        "🔔 Hatirlaticilarim",
-        "🗓️ Faaliyet Takvimi",
-        "📋 Gorev Listem",
-        "🔎 Detayli Arama",
-        "💾 Sistem Yedekleme",
-    ])
-
-    with t1: tab_dashboard()
-    with t2: tab_new_visit()
-    with t3: tab_reports()
-    with t4: tab_inventory()
-    with t5: tab_all_records()
-    with t6: tab_reminders()
-    with t7: tab_calendar()
-    with t8: tab_todos()
-    with t9: tab_global_search()
-    with t10: tab_backups()
+    if choice == "🏠 Özet & Analiz":
+        tab_dashboard()
+    elif choice == "➕ Yeni BT Kaydı":
+        tab_new_visit()
+    elif choice == "📊 Raporlama & Sunum":
+        tab_reports()
+    elif choice == "🔑 BT Envanter Defteri":
+        tab_inventory()
+    elif choice == "🗂️ Tüm Günlükler":
+        tab_all_records()
+    elif choice == "🔔 Hatırlatıcılarım":
+        tab_reminders()
+    elif choice == "🗓️ Faaliyet Takvimi":
+        tab_calendar()
+    elif choice == "📋 Görev Listem":
+        tab_todos()
+    elif choice == "🔎 Detaylı Arama":
+        tab_global_search()
+    elif choice == "💾 Sistem Yedekleme":
+        tab_backups()
 
 
 if __name__ == "__main__":
