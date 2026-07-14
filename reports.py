@@ -246,6 +246,13 @@ def export_to_pdf(df: pd.DataFrame, title: str = "Ziyaret Raporu") -> bytes:
     return output.getvalue()
 
 
+def fmt_date(s: str) -> str:
+    try:
+        return datetime.strptime(s, "%Y-%m-%d").strftime("%d.%m.%Y")
+    except:
+        return s or "—"
+
+
 def _safe_text(text: str) -> str:
     """
     Türkçe karakterleri PDF için Latin-1 uyumlu hale getirir.
@@ -534,7 +541,7 @@ def export_executive_pdf(visits: list[dict], stats: dict, title: str = "IT Faali
     footer_data = [
         [
             Paragraph("", style_body),
-            Paragraph(_safe_text("<b>Raporu Sunan:</b><br>IT Sistem ve Destek Uzmani<br>Imza / Onay"), ParagraphStyle("RightBody", parent=style_body, alignment=TA_RIGHT))
+            Paragraph(_safe_text("<b>Raporu Sunan:</b><br/>IT Sistem ve Destek Uzmani<br/>Imza / Onay"), ParagraphStyle("RightBody", parent=style_body, alignment=TA_RIGHT))
         ]
     ]
     footer_tbl = Table(footer_data, colWidths=[10 * cm, 7 * cm])
