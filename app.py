@@ -462,7 +462,7 @@ def tab_dashboard():
             bars = alt.Chart(df_t).mark_bar(
                 cornerRadiusTopLeft=5, cornerRadiusTopRight=5,
                 opacity=0.8,
-                color=alt.Gradient("linear",
+                color=alt.Gradient(gradient="linear",
                     stops=[alt.GradientStop(color="#1565C0", offset=0),
                            alt.GradientStop(color="#42A5F5", offset=1)],
                     x1=0, x2=0, y1=1, y2=0)
@@ -505,7 +505,7 @@ def tab_dashboard():
             df_co = pd.DataFrame(co_data)
             ch_co = alt.Chart(df_co).mark_bar(
                 cornerRadiusTopRight=5, cornerRadiusBottomRight=5,
-                color=alt.Gradient("linear",
+                color=alt.Gradient(gradient="linear",
                     stops=[alt.GradientStop(color="#1565C0", offset=0),
                            alt.GradientStop(color="#00BCD4", offset=1)],
                     x1=0, x2=1, y1=0, y2=0)
