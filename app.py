@@ -786,6 +786,165 @@ def tab_reports():
 
 
 # ─────────────────────────────────────────────
+# SEKME: E-POSTA RAPORLAMA
+# ─────────────────────────────────────────────
+
+def tab_email_report():
+    st.markdown('<div class="section-title" style="font-size:15px">📧 E-Posta Rapor Gönderim Paneli</div>', unsafe_allow_html=True)
+    
+    # Veritabanından mevcut ayarları oku
+    smtp_srv = db.get_setting("smtp_server", "smtp.gmail.com")
+    smtp_prt = db.get_setting("smtp_port", "587")
+    smtp_usr = db.get_setting("smtp_user", "")
+    smtp_pwd = db.get_setting("smtp_password", "")
+    smtp_from = db.get_setting("smtp_from", "")
+    smtp_to = db.get_setting("smtp_to", "")
+    smtp_ssl = db.get_setting("smtp_ssl", "False") == "True"
+    
+    with st.expander("⚙️ SMTP Sunucu & Gönderici Ayarları", expanded=not smtp_usr):
+        st.markdown("<p style='font-size:12px; color:rgba(180,210,240,0.6)'>Raporları yöneticinize veya kendinize mail atmak için SMTP (e-posta sunucusu) ayarlarınızı bir kez kaydetmeniz yeterlidir.</p>", unsafe_allow_html=True)
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            srv = st.text_input("SMTP Sunucusu", value=smtp_srv, placeholder="smtp.gmail.com")
+        with c2:
+            prt = st.text_input("Port", value=smtp_prt, placeholder="587")
+        with c3:
+            ssl_choice = st.selectbox("Güvenlik Protokolü", ["STARTTLS (Örn. Port 587)", "SSL/TLS (Örn. Port 465)"], index=0 if smtp_prt == "587" else 1)
+            
+        c4, c5 = st.columns(2)
+        with c4:
+            usr = st.text_input("SMTP Kullanıcı Adı (E-posta)", value=smtp_usr, placeholder="hesap@gmail.com")
+        with c5:
+            pwd = st.text_input("Şifre / Uygulama Şifresi", value=smtp_pwd, type="password", placeholder="••••••••••••••••")
+            
+        c6, c7 = st.columns(2)
+        with c6:
+            frm = st.text_input("Gönderen E-Posta (Kimden)", value=smtp_from or smtp_usr, placeholder="hesap@gmail.com")
+        with c7:
+            to_mails = st.text_input("Alıcı E-Posta (Kime) - Birden fazla ise virgülle ayırın", value=smtp_to, placeholder="yonetici@sirket.com, kendim@sirket.com")
+            
+        if st.button("💾 SMTP Ayarlarını Kaydet", key="btn_save_smtp"):
+            db.set_setting("smtp_server", srv)
+            db.set_setting("smtp_port", prt)
+            db.set_setting("smtp_user", usr)
+            db.set_setting("smtp_password", pwd)
+            db.set_setting("smtp_from", frm)
+            db.set_setting("smtp_to", to_mails)
+            db.set_setting("smtp_ssl", "True" if "SSL/TLS" in ssl_choice else "False")
+            st.success("✅ SMTP Ayarları veritabanına başarıyla kaydedildi!")
+            st.rerun()
+
+    # ── 2. RAPOR İÇERİĞİ & MAİL GÖNDERİMİ ──
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    st.markdown("#### 📝 E-Posta Raporu Hazırlama")
+    
+    col_range, col_type = st.columns([2, 1])
+    with col_type:
+        report_period = st.selectbox("Rapor Periyodu", ["Haftalık", "Aylık", "Özel Tarih Aralığı"], index=0)
+        
+    with col_range:
+        today = date.today()
+        if report_period == "Haftalık":
+            default_start = today - timedelta(days=7)
+            default_end = today
+        elif report_period == "Aylık":
+            default_start = today - timedelta(days=30)
+            default_end = today
+        else:
+            default_start = date(today.year, 1, 1)
+            default_end = today
+            
+        date_from = st.date_input("Başlangıç Tarihi", value=default_start)
+        date_to = st.date_input("Bitiş Tarihi", value=default_end)
+
+    # Verileri çek
+    visits = db.get_visits(
+        date_from=date_from.strftime("%Y-%m-%d"),
+        date_to=date_to.strftime("%Y-%m-%d")
+    )
+    
+    if not visits:
+        st.warning("⚠️ Seçilen tarih aralığında gönderilecek kayıt bulunamadı.")
+        return
+        
+    ts_range = f"{date_from.strftime('%d.%m.%Y')} - {date_to.strftime('%d.%m.%Y')}"
+    default_subject = f"IT Faaliyet Raporu ({ts_range})"
+    
+    # Rapor özetini oluştur
+    thr = sum(v.get("duration", 0) or 0 for v in visits)
+    distinct_cos = set(v["company"] for v in visits)
+    completed_tasks = [v for v in visits if v.get("status") == "Tamamlandi"]
+    
+    cat_counts = {}
+    for v in visits:
+        cat = v.get("technician") or "Diger IT Isleri"
+        cat_counts[cat] = cat_counts.get(cat, 0) + 1
+    top_cat_str = "Yok"
+    if cat_counts:
+        top_cat = max(cat_counts, key=cat_counts.get)
+        top_cat_str = f"{top_cat} ({cat_counts[top_cat]} kayit)"
+
+    default_body = (
+        f"Sayın Yöneticim,\n\n"
+        f"{ts_range} tarihleri arasında gerçekleştirdiğim bilgi teknolojileri (BT) saha ziyaretleri ve teknik destek faaliyetlerimin özeti aşağıdadır:\n\n"
+        f"📊 GENEL İSTATİSTİKLER\n"
+        f"• Destek Verilen Toplam Firma Sayısı: {len(distinct_cos)}\n"
+        f"• Toplam Faaliyet / Ziyaret Sayısı: {len(visits)} adet ({len(completed_tasks)} tamamlanan)\n"
+        f"• Toplam Harcanan Destek Süresi: {thr:.1f} saat\n"
+        f"• En Çok Çalışılan IT Kategorisi: {top_cat_str}\n\n"
+        f"📋 GERÇEKLEŞTİRİLEN ÖNEMLİ İŞLER\n"
+    )
+    for i, v in enumerate(visits[:10]):
+        notes_clean = v.get('work_notes', '').replace('\n', ' ').strip()
+        if len(notes_clean) > 85:
+            notes_clean = notes_clean[:85] + "..."
+        default_body += f"- [{fmt_date(v['visit_date'])}] {v['company']} - {v.get('subject') or 'Genel Destek'}: {notes_clean}\n"
+        
+    if len(visits) > 10:
+        default_body += f"- ve diğer {len(visits) - 10} teknik çalışma.\n"
+        
+    default_body += "\nDetaylı teknik faaliyet raporu ve PDF sunumu e-posta ekinde yer almaktadır.\n\nBilgilerinize sunarım.\n\nIT Sistem ve Destek Günlüğü"
+
+    mail_subject = st.text_input("E-Posta Konusu", value=default_subject)
+    mail_body = st.text_area("E-Posta Gövde Metni", value=default_body, height=220)
+    attach_pdf = st.checkbox("Şık PDF Sunumu Raporunu Ekle (.pdf)", value=True)
+    
+    st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+    if st.button("📤 Raporu E-Posta Olarak Gönder", type="primary", key="btn_send_report_email"):
+        if not smtp_usr or not smtp_pwd:
+            st.error("❌ E-posta gönderebilmek için önce yukarıdaki 'SMTP Sunucu & Gönderici Ayarları' bölümünü doldurup kaydetmelisiniz!")
+            return
+            
+        with st.spinner("📧 E-posta hazırlanıyor ve sunucuya gönderiliyor..."):
+            pdf_data = None
+            if attach_pdf:
+                pdf_data = rpt.export_executive_pdf(
+                    visits,
+                    cached_summary_stats(),
+                    title=f"IT Calisma Raporu — {ts_range}"
+                )
+                
+            success, msg = rpt.send_email_report(
+                smtp_server=smtp_srv,
+                smtp_port=smtp_prt,
+                smtp_user=smtp_usr,
+                smtp_password=smtp_pwd,
+                from_email=smtp_from or smtp_usr,
+                to_email=smtp_to,
+                use_ssl=(db.get_setting("smtp_ssl", "False") == "True"),
+                subject=mail_subject,
+                body_text=mail_body,
+                pdf_data=pdf_data,
+                pdf_filename=f"IT_Faaliyet_Raporu_{date_from.strftime('%d%m%Y')}_{date_to.strftime('%d%m%Y')}.pdf"
+            )
+            
+            if success:
+                st.success(f"🎉 {msg}")
+            else:
+                st.error(f"❌ {msg}")
+
+
+# ─────────────────────────────────────────────
 # SEKME 4 — TUM KAYITLAR
 # ─────────────────────────────────────────────
 
@@ -1327,6 +1486,8 @@ def main():
             tab_new_visit()
         elif tab_name == "📊 Raporlama & Sunum":
             tab_reports()
+        elif tab_name == "📧 E-Posta Gönder":
+            tab_email_report()
         elif tab_name == "🔑 BT Envanter Defteri":
             tab_inventory()
         elif tab_name == "🗂️ Tüm Günlükler":
@@ -1366,6 +1527,7 @@ def main():
                 ("🏠 Özet & Analiz", "🏠 Özet & Analiz"),
                 ("➕ Yeni BT Kaydı", "➕ Yeni BT Kaydı"),
                 ("📊 Raporlama & Sunum", "📊 Raporlama & Sunum"),
+                ("📧 E-Posta Gönder", "📧 E-Posta Gönder"),
                 ("🔑 BT Envanter Defteri", "🔑 BT Envanter Defteri"),
                 ("🗂️ Tüm Günlükler", "🗂️ Tüm Günlükler"),
                 ("🔔 Hatırlatıcılarım", "🔔 Hatırlatıcılarım"),

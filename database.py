@@ -92,6 +92,14 @@ def init_db():
         )
     """)
 
+    # Genel Ayarlar tablosu (SMTP vb. ayarlar icin)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            key         TEXT PRIMARY KEY,
+            value       TEXT
+        )
+    """)
+
     # Performans icin indeksler (sik sorgulanan sutunlar)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_visits_date      ON visits(visit_date)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_visits_company   ON visits(company)")
@@ -716,4 +724,25 @@ def restore_backup(filename: str) -> bool:
                 os.remove(temp_backup)
             raise e
     return False
+
+
+def get_setting(key: str, default: str = "") -> str:
+    """Belirtilen ayarin degerini dondurur."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return row["value"]
+    return default
+
+
+def set_setting(key: str, value: str):
+    """Ayari kaydeder veya gunceller."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, value))
+    conn.commit()
+    conn.close()
 
