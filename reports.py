@@ -555,7 +555,7 @@ def export_executive_pdf(visits: list[dict], stats: dict, title: str = "IT Faali
     return output.getvalue()
 
 
-def send_email_report(smtp_server: str, smtp_port: str, smtp_user: str, smtp_password: str, from_email: str, to_email: str, use_ssl: bool, subject: str, body_text: str, pdf_data: bytes = None, pdf_filename: str = "rapor.pdf"):
+def send_email_report(smtp_server: str, smtp_port: str, smtp_user: str, smtp_password: str, from_email: str, to_email: str, security_mode: str, subject: str, body_text: str, pdf_data: bytes = None, pdf_filename: str = "rapor.pdf"):
     """
     SMTP sunucusu araciligiyla e-posta raporu gonderir. Opsiyonel olarak PDF eki ekler.
     """
@@ -578,13 +578,17 @@ def send_email_report(smtp_server: str, smtp_port: str, smtp_user: str, smtp_pas
             part['Content-Disposition'] = f'attachment; filename="{pdf_filename}"'
             msg.attach(part)
             
-        if use_ssl:
+        if security_mode == "SSL/TLS":
             server = smtplib.SMTP_SSL(smtp_server, int(smtp_port), timeout=15)
         else:
             server = smtplib.SMTP(smtp_server, int(smtp_port), timeout=15)
-            server.starttls()
+            if security_mode == "STARTTLS":
+                server.starttls()
             
-        server.login(smtp_user, smtp_password)
+        # Sifresiz baglantilarda kullanıcı adı ve sifre girilmemisse (kimlik dogrulamasiz sunucu) login olmayı atla
+        if smtp_user.strip() or smtp_password.strip():
+            server.login(smtp_user, smtp_password)
+            
         # Birden fazla alici varsa virgulle ayrilmis e-postalari listeye cevir
         recipients = [email.strip() for email in to_email.split(",") if email.strip()]
         server.sendmail(from_email, recipients, msg.as_string())

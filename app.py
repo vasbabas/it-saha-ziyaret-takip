@@ -799,7 +799,15 @@ def tab_email_report():
     smtp_pwd = db.get_setting("smtp_password", "")
     smtp_from = db.get_setting("smtp_from", "")
     smtp_to = db.get_setting("smtp_to", "")
-    smtp_ssl = db.get_setting("smtp_ssl", "False") == "True"
+    
+    # Eski verilerden uyumluluk icin smtp_sec ayarla
+    smtp_sec_db = db.get_setting("smtp_sec", "")
+    if not smtp_sec_db:
+        # Geriye donuk uyumluluk
+        old_ssl = db.get_setting("smtp_ssl", "False") == "True"
+        smtp_sec = "SSL/TLS" if old_ssl else "STARTTLS"
+    else:
+        smtp_sec = smtp_sec_db
     
     with st.expander("⚙️ SMTP Sunucu & Gönderici Ayarları", expanded=not smtp_usr):
         st.markdown("<p style='font-size:12px; color:rgba(180,210,240,0.6)'>Raporları yöneticinize veya kendinize mail atmak için SMTP (e-posta sunucusu) ayarlarınızı bir kez kaydetmeniz yeterlidir.</p>", unsafe_allow_html=True)
@@ -809,13 +817,20 @@ def tab_email_report():
         with c2:
             prt = st.text_input("Port", value=smtp_prt, placeholder="587")
         with c3:
-            ssl_choice = st.selectbox("Güvenlik Protokolü", ["STARTTLS (Örn. Port 587)", "SSL/TLS (Örn. Port 465)"], index=0 if smtp_prt == "587" else 1)
+            sec_options = ["STARTTLS (Örn. Port 587)", "SSL/TLS (Örn. Port 465)", "Güvenlik Yok (Plain / Şifresiz)"]
+            if smtp_sec == "SSL/TLS":
+                sec_index = 1
+            elif smtp_sec == "None":
+                sec_index = 2
+            else:
+                sec_index = 0
+            ssl_choice = st.selectbox("Güvenlik Protokolü", sec_options, index=sec_index)
             
         c4, c5 = st.columns(2)
         with c4:
-            usr = st.text_input("SMTP Kullanıcı Adı (E-posta)", value=smtp_usr, placeholder="hesap@gmail.com")
+            usr = st.text_input("SMTP Kullanıcı Adı (E-posta) - Sunucu şifresiz/kimlik doğrulamasız ise boş bırakın", value=smtp_usr, placeholder="hesap@gmail.com")
         with c5:
-            pwd = st.text_input("Şifre / Uygulama Şifresi", value=smtp_pwd, type="password", placeholder="••••••••••••••••")
+            pwd = st.text_input("Şifre / Uygulama Şifresi - Sunucu şifresiz/kimlik doğrulamasız ise boş bırakın", value=smtp_pwd, type="password", placeholder="••••••••••••••••")
             
         c6, c7 = st.columns(2)
         with c6:
@@ -824,13 +839,21 @@ def tab_email_report():
             to_mails = st.text_input("Alıcı E-Posta (Kime) - Birden fazla ise virgülle ayırın", value=smtp_to, placeholder="yonetici@sirket.com, kendim@sirket.com")
             
         if st.button("💾 SMTP Ayarlarını Kaydet", key="btn_save_smtp"):
+            # Protokol tipini veritabanı formatına cevir
+            if "STARTTLS" in ssl_choice:
+                sec_val = "STARTTLS"
+            elif "SSL/TLS" in ssl_choice:
+                sec_val = "SSL/TLS"
+            else:
+                sec_val = "None"
+                
             db.set_setting("smtp_server", srv)
             db.set_setting("smtp_port", prt)
             db.set_setting("smtp_user", usr)
             db.set_setting("smtp_password", pwd)
             db.set_setting("smtp_from", frm)
             db.set_setting("smtp_to", to_mails)
-            db.set_setting("smtp_ssl", "True" if "SSL/TLS" in ssl_choice else "False")
+            db.set_setting("smtp_sec", sec_val)
             st.success("✅ SMTP Ayarları veritabanına başarıyla kaydedildi!")
             st.rerun()
 
@@ -911,7 +934,8 @@ def tab_email_report():
     
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
     if st.button("📤 Raporu E-Posta Olarak Gönder", type="primary", key="btn_send_report_email"):
-        if not smtp_usr or not smtp_pwd:
+        # Şifresiz/güvenliksiz modlar haricinde, kimlik doğrulama gerekiyorsa kontrol et
+        if smtp_sec != "None" and (not smtp_usr or not smtp_pwd):
             st.error("❌ E-posta gönderebilmek için önce yukarıdaki 'SMTP Sunucu & Gönderici Ayarları' bölümünü doldurup kaydetmelisiniz!")
             return
             
@@ -931,7 +955,7 @@ def tab_email_report():
                 smtp_password=smtp_pwd,
                 from_email=smtp_from or smtp_usr,
                 to_email=smtp_to,
-                use_ssl=(db.get_setting("smtp_ssl", "False") == "True"),
+                security_mode=smtp_sec,
                 subject=mail_subject,
                 body_text=mail_body,
                 pdf_data=pdf_data,
