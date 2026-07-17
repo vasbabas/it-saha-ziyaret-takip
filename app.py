@@ -1034,8 +1034,11 @@ def tab_email_report():
     mail_subject = st.text_input("E-Posta Konusu", value=default_subject)
     mail_body = st.text_area("E-Posta Gövde Metni (Düz Metin Fallback)", value=default_body, height=180)
     
+    # Markdown kod blogu algilama hatasini (girintilerden dolayi) cozmek icin HTML'i temizle
+    clean_html = "".join([line.strip() for line in html_body.split("\n")])
+    
     with st.expander("👀 Gönderilecek Zengin HTML E-Posta Önizlemesi", expanded=True):
-        st.markdown(html_body, unsafe_allow_html=True)
+        st.markdown(clean_html, unsafe_allow_html=True)
         
     attach_pdf = st.checkbox("Şık PDF Sunumu Raporunu Ekle (.pdf)", value=True)
     
@@ -1066,7 +1069,7 @@ def tab_email_report():
                 security_mode=smtp_sec,
                 subject=mail_subject,
                 body_text=mail_body,
-                html_body=html_body,
+                html_body=clean_html,
                 pdf_data=pdf_data,
                 pdf_filename=f"IT_Faaliyet_Raporu_{date_from.strftime('%d%m%Y')}_{date_to.strftime('%d%m%Y')}.pdf"
             )
