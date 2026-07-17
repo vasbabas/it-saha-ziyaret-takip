@@ -799,6 +799,7 @@ def tab_email_report():
     smtp_pwd = db.get_setting("smtp_password", "")
     smtp_from = db.get_setting("smtp_from", "")
     smtp_to = db.get_setting("smtp_to", "")
+    smtp_name = db.get_setting("smtp_from_name", "IT Sistem ve Destek Günlüğü")
     
     # Eski verilerden uyumluluk icin smtp_sec ayarla
     smtp_sec_db = db.get_setting("smtp_sec", "")
@@ -811,12 +812,17 @@ def tab_email_report():
     
     with st.expander("⚙️ SMTP Sunucu & Gönderici Ayarları", expanded=not smtp_usr):
         st.markdown("<p style='font-size:12px; color:rgba(180,210,240,0.6)'>Raporları yöneticinize veya kendinize mail atmak için SMTP (e-posta sunucusu) ayarlarınızı bir kez kaydetmeniz yeterlidir.</p>", unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        with c1:
+        
+        c_name, c_srv, c_prt = st.columns([1.5, 1.5, 1])
+        with c_name:
+            from_name_val = st.text_input("Gönderen Adı / Unvanı", value=smtp_name, placeholder="Örn. Ahmet Yılmaz - IT Uzmanı")
+        with c_srv:
             srv = st.text_input("SMTP Sunucusu", value=smtp_srv, placeholder="smtp.gmail.com")
-        with c2:
+        with c_prt:
             prt = st.text_input("Port", value=smtp_prt, placeholder="587")
-        with c3:
+            
+        c_proto, c_usr, c_pwd = st.columns([1.2, 1.4, 1.4])
+        with c_proto:
             sec_options = ["STARTTLS (Örn. Port 587)", "SSL/TLS (Örn. Port 465)", "Güvenlik Yok (Plain / Şifresiz)"]
             if smtp_sec == "SSL/TLS":
                 sec_index = 1
@@ -825,21 +831,18 @@ def tab_email_report():
             else:
                 sec_index = 0
             ssl_choice = st.selectbox("Güvenlik Protokolü", sec_options, index=sec_index)
+        with c_usr:
+            usr = st.text_input("SMTP Kullanıcı Adı (E-posta) - Şifresiz ise boş bırakın", value=smtp_usr, placeholder="hesap@gmail.com")
+        with c_pwd:
+            pwd = st.text_input("Şifre / Uygulama Şifresi - Şifresiz ise boş bırakın", value=smtp_pwd, type="password", placeholder="••••••••••••••••")
             
-        c4, c5 = st.columns(2)
-        with c4:
-            usr = st.text_input("SMTP Kullanıcı Adı (E-posta) - Sunucu şifresiz/kimlik doğrulamasız ise boş bırakın", value=smtp_usr, placeholder="hesap@gmail.com")
-        with c5:
-            pwd = st.text_input("Şifre / Uygulama Şifresi - Sunucu şifresiz/kimlik doğrulamasız ise boş bırakın", value=smtp_pwd, type="password", placeholder="••••••••••••••••")
-            
-        c6, c7 = st.columns(2)
-        with c6:
+        c_from, c_to = st.columns(2)
+        with c_from:
             frm = st.text_input("Gönderen E-Posta (Kimden)", value=smtp_from or smtp_usr, placeholder="hesap@gmail.com")
-        with c7:
+        with c_to:
             to_mails = st.text_input("Alıcı E-Posta (Kime) - Birden fazla ise virgülle ayırın", value=smtp_to, placeholder="yonetici@sirket.com, kendim@sirket.com")
             
         if st.button("💾 SMTP Ayarlarını Kaydet", key="btn_save_smtp"):
-            # Protokol tipini veritabanı formatına cevir
             if "STARTTLS" in ssl_choice:
                 sec_val = "STARTTLS"
             elif "SSL/TLS" in ssl_choice:
@@ -853,6 +856,7 @@ def tab_email_report():
             db.set_setting("smtp_password", pwd)
             db.set_setting("smtp_from", frm)
             db.set_setting("smtp_to", to_mails)
+            db.set_setting("smtp_from_name", from_name_val)
             db.set_setting("smtp_sec", sec_val)
             st.success("✅ SMTP Ayarları veritabanına başarıyla kaydedildi!")
             st.rerun()
@@ -907,6 +911,39 @@ def tab_email_report():
         top_cat = max(cat_counts, key=cat_counts.get)
         top_cat_str = f"{top_cat} ({cat_counts[top_cat]} kayit)"
 
+    # HTML Tablo Satırları
+    table_rows_html = ""
+    for v in visits[:15]:
+        status_bg = "#e8f5e9" if v.get("status") == "Tamamlandi" else "#fff3e0"
+        status_fg = "#2e7d32" if v.get("status") == "Tamamlandi" else "#ef6c00"
+        
+        notes_clean = v.get('work_notes', '').replace('\n', ' ').strip()
+        if len(notes_clean) > 95:
+            notes_clean = notes_clean[:92] + "..."
+            
+        table_rows_html += f"""
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 10px; font-size: 13px; color: #334155;">{fmt_date(v['visit_date'])}</td>
+            <td style="padding: 10px; font-size: 13px; font-weight: 600; color: #1e293b;">{v['company']}</td>
+            <td style="padding: 10px; font-size: 13px; color: #475569;"><strong>{v.get('subject') or 'Genel Destek'}</strong><br/><span style="font-size:12px; color:#64748b;">{notes_clean}</span></td>
+            <td style="padding: 10px; text-align: center;">
+                <span style="background-color: {status_bg}; color: {status_fg}; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">
+                    {v.get('status')}
+                </span>
+            </td>
+        </tr>
+        """
+
+    if len(visits) > 15:
+        table_rows_html += f"""
+        <tr>
+            <td colspan="4" style="padding: 10px; font-size: 12px; text-align: center; color: #64748b; font-style: italic;">
+                ve diğer {len(visits) - 15} adet teknik çalışma detayları ekteki PDF raporunda yer almaktadır.
+            </td>
+        </tr>
+        """
+
+    # Plain Text E-Posta gövdesi (Fallback & Düz Metin)
     default_body = (
         f"Sayın Yöneticim,\n\n"
         f"{ts_range} tarihleri arasında gerçekleştirdiğim bilgi teknolojileri (BT) saha ziyaretleri ve teknik destek faaliyetlerimin özeti aşağıdadır:\n\n"
@@ -926,10 +963,80 @@ def tab_email_report():
     if len(visits) > 10:
         default_body += f"- ve diğer {len(visits) - 10} teknik çalışma.\n"
         
-    default_body += "\nDetaylı teknik faaliyet raporu ve PDF sunumu e-posta ekinde yer almaktadır.\n\nBilgilerinize sunarım.\n\nIT Sistem ve Destek Günlüğü"
+    default_body += f"\nDetaylı teknik faaliyet raporu ve PDF sunumu e-posta ekinde yer almaktadır.\n\nBilgilerinize sunarım.\n\n{smtp_name}"
+
+    # Zengin HTML E-Posta şablonu
+    html_body = f"""
+    <div style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; max-width: 700px; margin: 0 auto; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; color: #1e293b; text-align: left;">
+        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 26px 20px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 700;">IT FAALİYET & TEKNİK DESTEK RAPORU</h1>
+            <p style="color: #bfdbfe; margin: 5px 0 0; font-size: 13px; font-weight: 500;">{ts_range}</p>
+        </div>
+        
+        <div style="padding: 20px;">
+            <p style="font-size: 14px; line-height: 1.5; margin-top: 0; font-weight: 600;">Sayın Yöneticim,</p>
+            <p style="font-size: 13px; line-height: 1.5; color: #475569;">
+                Belirtilen tarih aralığında gerçekleştirdiğim bilgi teknolojileri (BT) altyapı, sistem yönetimi ve teknik destek faaliyetlerimin detaylı raporu aşağıda yer almaktadır:
+            </p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin: 15px 0 20px;">
+                <tr>
+                    <td style="width: 33.33%; padding: 3px;">
+                        <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; text-align: center;">
+                            <span style="font-size: 20px; font-weight: 700; color: #2563eb; display: block;">{len(visits)}</span>
+                            <span style="font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase;">Toplam İş</span>
+                        </div>
+                    </td>
+                    <td style="width: 33.33%; padding: 3px;">
+                        <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; text-align: center;">
+                            <span style="font-size: 20px; font-weight: 700; color: #10b981; display: block;">{thr:.1f} Saat</span>
+                            <span style="font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase;">Toplam Süre</span>
+                        </div>
+                    </td>
+                    <td style="width: 33.33%; padding: 3px;">
+                        <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; text-align: center;">
+                            <span style="font-size: 20px; font-weight: 700; color: #8b5cf6; display: block;">{len(distinct_cos)}</span>
+                            <span style="font-size: 10px; color: #64748b; font-weight: 600; text-transform: uppercase;">Firma / Kurum</span>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+            
+            <h3 style="font-size: 13.5px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; margin: 20px 0 10px; color: #1e3a8a;">📋 Yapılan Çalışmaların Detayı</h3>
+            <table style="width: 100%; border-collapse: collapse; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden;">
+                <thead>
+                    <tr style="background-color: #f1f5f9; border-bottom: 1px solid #e2e8f0;">
+                        <th style="padding: 10px; font-size: 11.5px; font-weight: 600; text-align: left; color: #475569;">Tarih</th>
+                        <th style="padding: 10px; font-size: 11.5px; font-weight: 600; text-align: left; color: #475569;">Firma/Kurum</th>
+                        <th style="padding: 10px; font-size: 11.5px; font-weight: 600; text-align: left; color: #475569;">Çalışma Detayı</th>
+                        <th style="padding: 10px; font-size: 11.5px; font-weight: 600; text-align: center; color: #475569;">Durum</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {table_rows_html}
+                </tbody>
+            </table>
+            
+            <p style="font-size: 11px; color: #64748b; margin-top: 12px; font-style: italic;">*Detaylı teknik faaliyet raporu ve şık grafik sunumu e-posta ekinde PDF olarak yer almaktadır.</p>
+            
+            <div style="margin-top: 25px; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+                <p style="margin: 0; font-size: 13.5px; font-weight: 600; color: #1e3a8a;">{smtp_name}</p>
+                <p style="margin: 2px 0 0; font-size: 11px; color: #64748b;">Bilgi Teknolojileri Sistem ve Destek Uzmanı</p>
+            </div>
+        </div>
+        
+        <div style="background-color: #f1f5f9; padding: 12px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 10.5px; color: #94a3b8;">
+            Bu e-posta, IT Sistem ve Ziyaret Takip Otomasyonu tarafından otomatik olarak hazırlanmıştır.
+        </div>
+    </div>
+    """
 
     mail_subject = st.text_input("E-Posta Konusu", value=default_subject)
-    mail_body = st.text_area("E-Posta Gövde Metni", value=default_body, height=220)
+    mail_body = st.text_area("E-Posta Gövde Metni (Düz Metin Fallback)", value=default_body, height=180)
+    
+    with st.expander("👀 Gönderilecek Zengin HTML E-Posta Önizlemesi", expanded=True):
+        st.markdown(html_body, unsafe_allow_html=True)
+        
     attach_pdf = st.checkbox("Şık PDF Sunumu Raporunu Ekle (.pdf)", value=True)
     
     st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
@@ -954,10 +1061,12 @@ def tab_email_report():
                 smtp_user=smtp_usr,
                 smtp_password=smtp_pwd,
                 from_email=smtp_from or smtp_usr,
+                from_name=smtp_name,
                 to_email=smtp_to,
                 security_mode=smtp_sec,
                 subject=mail_subject,
                 body_text=mail_body,
+                html_body=html_body,
                 pdf_data=pdf_data,
                 pdf_filename=f"IT_Faaliyet_Raporu_{date_from.strftime('%d%m%Y')}_{date_to.strftime('%d%m%Y')}.pdf"
             )

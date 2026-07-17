@@ -555,23 +555,32 @@ def export_executive_pdf(visits: list[dict], stats: dict, title: str = "IT Faali
     return output.getvalue()
 
 
-def send_email_report(smtp_server: str, smtp_port: str, smtp_user: str, smtp_password: str, from_email: str, to_email: str, security_mode: str, subject: str, body_text: str, pdf_data: bytes = None, pdf_filename: str = "rapor.pdf"):
+def send_email_report(smtp_server: str, smtp_port: str, smtp_user: str, smtp_password: str, from_email: str, from_name: str, to_email: str, security_mode: str, subject: str, body_text: str, html_body: str = None, pdf_data: bytes = None, pdf_filename: str = "rapor.pdf"):
     """
-    SMTP sunucusu araciligiyla e-posta raporu gonderir. Opsiyonel olarak PDF eki ekler.
+    SMTP sunucusu araciligiyla e-posta raporu gonderir. Opsiyonel olarak hem HTML hem de PDF eki ekler.
     """
     import smtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
     from email.mime.application import MIMEApplication
+    from email.header import Header
+    from email.utils import formataddr
 
     try:
+        # MIMEMultipart('alternative') veya standart multipart karisik
         msg = MIMEMultipart()
-        msg['From'] = from_email
-        msg['To'] = to_email
         msg['Subject'] = subject
+        msg['To'] = to_email
         
-        # Turkce karakter destegi icin utf-8 ayari ile metni ekle
+        # Turkce karakter destekli profesyonel gonderici ismi formatlama
+        msg['From'] = formataddr((str(Header(from_name, 'utf-8')), from_email))
+        
+        # Turkce karakter destegi icin utf-8 ayari ile duz metni ekle
         msg.attach(MIMEText(body_text, 'plain', 'utf-8'))
+        
+        # Zengin HTML metni mevcutsa ekle
+        if html_body:
+            msg.attach(MIMEText(html_body, 'html', 'utf-8'))
         
         if pdf_data is not None:
             part = MIMEApplication(pdf_data, Name=pdf_filename)
