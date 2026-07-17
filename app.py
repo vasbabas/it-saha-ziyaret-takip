@@ -799,7 +799,7 @@ def tab_email_report():
     smtp_pwd = db.get_setting("smtp_password", "")
     smtp_from = db.get_setting("smtp_from", "")
     smtp_to = db.get_setting("smtp_to", "")
-    smtp_name = db.get_setting("smtp_from_name", "Muzaffer İLİŞİK - IT Teknisyeni")
+    smtp_name = db.get_setting("smtp_from_name", "IT Sistem ve Destek Günlüğü")
     
     # Eski verilerden uyumluluk icin smtp_sec ayarla
     smtp_sec_db = db.get_setting("smtp_sec", "")
