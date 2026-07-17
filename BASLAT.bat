@@ -14,5 +14,5 @@ echo.
 echo  Bu bilgisayardan : http://localhost:8501
 echo  Ayni agdaki diger : http://192.168.1.100:8501
 echo.
-python -m streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+"C:\Users\User\AppData\Local\Python\pythoncore-3.14-64\python.exe" -m streamlit run app.py --server.port 8501 --server.address 0.0.0.0
 pause
