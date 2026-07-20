@@ -8,27 +8,27 @@
   <meta name="theme-color" content="#1e3a8a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="https://img.icons8.com/color/192/000000/administrator-male.png">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: #0f172a; color: #f8fafc; padding-bottom: 75px; min-height: 100vh; font-size: 14px; }
     
-    /* Header */
-    .app-header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 16px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    .app-header h1 { font-size: 17px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
-    .app-header p { font-size: 11px; color: #bfdbfe; margin-top: 2px; }
+    /* Header & Banner */
+    .app-header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 14px 16px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .app-header h1 { font-size: 16px; font-weight: 700; color: #fff; }
+    .sync-badge { font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 12px; display: inline-block; margin-top: 4px; }
+    .sync-online { background: rgba(16,185,129,0.25); color: #34d399; }
+    .sync-offline { background: rgba(245,158,11,0.25); color: #fbbf24; }
 
-    /* Container & Cards */
-    .container { padding: 16px; max-width: 600px; margin: 0 auto; }
+    /* Layout */
+    .container { padding: 14px; max-width: 600px; margin: 0 auto; }
     .card { background: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .card-title { font-size: 15px; font-weight: 600; color: #60a5fa; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-size: 14.5px; font-weight: 600; color: #60a5fa; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
     
-    /* Inputs & Buttons */
-    label { display: block; font-size: 12px; color: #94a3b8; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.03em; }
-    input, select, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; color: #fff; font-size: 14px; margin-bottom: 12px; outline: none; transition: border-color 0.2s; }
+    label { display: block; font-size: 11.5px; color: #94a3b8; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+    input, select, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; color: #fff; font-size: 14px; margin-bottom: 12px; outline: none; }
     input:focus, select:focus, textarea:focus { border-color: #3b82f6; }
     
-    .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 13px; border-radius: 10px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; transition: opacity 0.2s; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 13px; border-radius: 10px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; }
     .btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
     .btn-secondary { background: #334155; color: #f8fafc; }
     .btn-success { background: linear-gradient(135deg, #059669, #10b981); color: #fff; }
@@ -36,26 +36,14 @@
     
     /* Bottom Navigation Bar */
     .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-around; padding: 8px 0; z-index: 1000; box-shadow: 0 -4px 15px rgba(0,0,0,0.4); }
-    .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 10px; text-decoration: none; font-weight: 500; width: 25%; }
-    .nav-item .icon { font-size: 18px; margin-bottom: 2px; }
+    .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 10px; text-decoration: none; font-weight: 500; width: 20%; }
+    .nav-item .icon { font-size: 17px; margin-bottom: 2px; }
     .nav-item.active { color: #3b82f6; font-weight: 700; }
 
-    /* Badges & Pills */
-    .pill { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
-    .pill-completed { background: rgba(16,185,129,0.2); color: #34d399; }
-    .pill-pending { background: rgba(245,158,11,0.2); color: #fbbf24; }
-
-    /* Hidden Tabs */
+    /* Tabs */
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-
-    /* Security PIN Overlay */
-    #pinOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #0f172a; z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
-    .pin-dots { display: flex; gap: 12px; margin: 20px 0; }
-    .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #3b82f6; }
-    .pin-dot.filled { background: #3b82f6; }
-    .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; width: 240px; }
-    .pin-key { background: #1e293b; border: 1px solid #334155; border-radius: 50%; width: 65px; height: 65px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: #fff; margin: 0 auto; }
+    .item-box { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -63,7 +51,7 @@
   <!-- Header -->
   <div class="app-header">
     <h1>📱 IT Saha Takip Mobil</h1>
-    <p>Çevrimdışı / İnternetsiz Saha Günlüğü</p>
+    <div id="syncBadge" class="sync-badge sync-offline">🟠 Bilgisayarla Eşitlenecek</div>
   </div>
 
   <div class="container">
@@ -71,7 +59,7 @@
     <!-- TAB 1: YENİ BT KAYDI -->
     <div id="tab-new" class="tab-content active">
       <div class="card">
-        <div class="card-title">⚡ Hızlı Not Şablonu</div>
+        <div class="card-title">⚡ Hızlı Not Şablonu Yükle</div>
         <select id="tplSelect" onchange="applyTemplate()">
           <option value="">-- Şablon Seçin --</option>
           <option value="sunucu">🖥️ Sunucu Rutin Bakımı</option>
@@ -88,10 +76,11 @@
         <input type="date" id="vDate">
         
         <label>Firma / Kurum Adı *</label>
-        <input type="text" id="vCompany" placeholder="Örn: ABC Holding">
+        <input type="text" id="vCompany" placeholder="Firma Adı (Örn: ABC A.Ş.)" list="companyDatalist">
+        <datalist id="companyDatalist"></datalist>
         
         <label>Çalışma Konusu</label>
-        <input type="text" id="vSubject" placeholder="Örn: Sunucu Güncelleme">
+        <input type="text" id="vSubject" placeholder="Örn: Sunucu Bakımı">
 
         <label>Kategori</label>
         <select id="vCategory">
@@ -112,7 +101,7 @@
         </select>
 
         <label>Teknik Notlar *</label>
-        <textarea id="vNotes" rows="4" placeholder="Yapılan teknik işlemler..."></textarea>
+        <textarea id="vNotes" rows="4" placeholder="Yapılan teknik detaylar..."></textarea>
 
         <button class="btn btn-primary" onclick="saveVisit()">💾 Kaydı Mobil Hafızaya Ekle</button>
       </div>
@@ -127,43 +116,54 @@
       </div>
     </div>
 
-    <!-- TAB 3: GÖREVLER -->
+    <!-- TAB 3: GÜNLÜKLER (ZİYARET GEÇMİŞİ) -->
+    <div id="tab-records" class="tab-content">
+      <div class="card">
+        <div class="card-title">🗂️ Tüm Ziyaret Kayıtları</div>
+        <input type="text" id="recordSearch" placeholder="Kayıtlarda Ara..." onkeyup="renderRecords()">
+        <div id="recordsList"></div>
+      </div>
+    </div>
+
+    <!-- TAB 4: GÖREVLER -->
     <div id="tab-todos" class="tab-content">
       <div class="card">
-        <div class="card-title">📋 Yapılacaklar & Hatırlatıcılar</div>
+        <div class="card-title">📋 Yapılacaklar & Görevler</div>
         <input type="text" id="todoTitle" placeholder="Yeni Görev Ekle...">
         <button class="btn btn-secondary" style="margin-bottom:12px;" onclick="addTodo()">+ Görev Ekle</button>
         <div id="todoList"></div>
       </div>
     </div>
 
-    <!-- TAB 4: EŞİTLEME / YEDEK -->
+    <!-- TAB 5: EŞİTLEME (SYNC) -->
     <div id="tab-sync" class="tab-content">
       <div class="card">
-        <div class="card-title">🔄 Akşam Eşitleme (Bilgisayara Aktar)</div>
-        <p style="font-size:12px; color:#94a3b8; margin-bottom:12px;">
-          Gün içinde aldığınız tüm kayıtları bilgisayarınızdaki ana veritabanı ile eşitlemek için paketi indirin veya bilgisayardan indirdiğiniz veriyi yükleyin.
+        <div class="card-title">🔄 Bilgisayarla Otomatik Eşitle</div>
+        <p style="font-size:12.5px; color:#94a3b8; margin-bottom:14px; line-height:1.5;">
+          Aynı Wi-Fi ağındayken aşağıdaki butona dokunarak bilgisayardan <b>güncel verileri çekebilir</b> ve telefonda aldığınız <b>yeni kayıtları bilgisayara aktarabilirsiniz</b>.
         </p>
 
-        <button class="btn btn-success" style="margin-bottom:10px;" onclick="exportMobileData()">📤 Telefonda Aldığım Kayıtları İndir (.json)</button>
-        
-        <label>Bilgisayardan Gelen Paket Yükle (.json)</label>
-        <input type="file" id="importFile" accept=".json" onchange="importMobileData(event)">
+        <button class="btn btn-success" style="margin-bottom:12px;" onclick="syncWithPC()">🚀 Bilgisayarla Şimdi Eşitle</button>
+        <button class="btn btn-secondary" onclick="exportMobileData()">📤 Yedek Paketi İndir (.json)</button>
       </div>
 
       <div class="card">
-        <div class="card-title">📊 Mobil İstatistikler</div>
-        <p style="font-size:13px; color:#cbd5e1;" id="statSummary">Yükleniyor...</p>
+        <div class="card-title">📊 Yerel Mobil İstatistikler</div>
+        <div style="font-size:13px; color:#cbd5e1; line-height:1.6;" id="statSummary">Yükleniyor...</div>
       </div>
     </div>
 
   </div>
 
-  <!-- Bottom Navigation -->
+  <!-- Bottom Navigation Bar -->
   <div class="bottom-nav">
     <a href="#" class="nav-item active" onclick="switchTab('new', this)">
       <span class="icon">➕</span>
       <span>Yeni Kayıt</span>
+    </a>
+    <a href="#" class="nav-item" onclick="switchTab('records', this)">
+      <span class="icon">🗂️</span>
+      <span>Günlükler</span>
     </a>
     <a href="#" class="nav-item" onclick="switchTab('inventory', this)">
       <span class="icon">🔑</span>
@@ -179,20 +179,17 @@
     </a>
   </div>
 
-  <!-- Script Logic -->
+  <!-- JavaScript Engine -->
   <script>
-    // Set default date
     document.getElementById('vDate').valueAsDate = new Date();
+    const HOST_IP = window.location.hostname;
+    const API_BASE = `http://${HOST_IP}:8502`;
 
-    // Local Storage Data Structures
+    // Pure dynamic storage, NO hardcoded dummy sample data!
     let mobileData = JSON.parse(localStorage.getItem('it_mobile_db')) || {
       visits: [],
-      inventory: [
-        { company: "Örnek Firma A.Ş.", ip_subnet: "192.168.1.0/24", vpn: "OpenVPN / vpn.ornek.com", credentials: "admin / P@ssw0rd123", notes: "Modem şifresi: Admin123" }
-      ],
-      todos: [
-        { title: "Veeam Yedeklerini Kontrol Et", done: false }
-      ]
+      inventory: [],
+      todos: []
     };
 
     function saveDB() {
@@ -206,6 +203,7 @@
       document.getElementById('tab-' + tabId).classList.add('active');
       el.classList.add('active');
       
+      if(tabId === 'records') renderRecords();
       if(tabId === 'inventory') renderInventory();
       if(tabId === 'todos') renderTodos();
       if(tabId === 'sync') updateStats();
@@ -251,13 +249,48 @@
         created_at: new Date().toISOString()
       };
 
-      mobileData.visits.push(rec);
+      mobileData.visits.unshift(rec);
       saveDB();
 
-      alert('✅ Ziyaret kaydı telefona başarıyla kaydedildi!');
+      alert('✅ Ziyaret kaydı telefona eklendi!');
       document.getElementById('vCompany').value = '';
       document.getElementById('vNotes').value = '';
       document.getElementById('vSubject').value = '';
+      
+      // Auto-sync if connected to PC API
+      syncWithPC(true);
+    }
+
+    function renderRecords() {
+      const container = document.getElementById('recordsList');
+      const query = document.getElementById('recordSearch').value.toLowerCase();
+      container.innerHTML = '';
+
+      const filtered = mobileData.visits.filter(v => 
+        v.company.toLowerCase().includes(query) || (v.subject && v.subject.toLowerCase().includes(query)) || (v.work_notes && v.work_notes.toLowerCase().includes(query))
+      );
+
+      if(filtered.length === 0) {
+        container.innerHTML = '<p style="color:#64748b; font-size:12px; text-align:center; padding:15px;">Henüz kayıt bulunmuyor.</p>';
+        return;
+      }
+
+      filtered.forEach(v => {
+        const div = document.createElement('div');
+        div.className = 'item-box';
+        const isCompleted = v.status === 'Tamamlandi';
+        div.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:700; color:#38bdf8;">🏢 ${v.company}</span>
+            <span style="font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px; background:${isCompleted ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}; color:${isCompleted ? '#34d399' : '#fbbf24'};">
+              ${v.status}
+            </span>
+          </div>
+          <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">📅 <b>${v.visit_date}</b> · 📌 ${v.subject || 'Genel Destek'} (${v.duration || 1} saat)</div>
+          <div style="font-size:12px; color:#94a3b8; margin-top:6px; white-space:pre-line;">${v.work_notes}</div>
+        `;
+        container.appendChild(div);
+      });
     }
 
     function renderInventory() {
@@ -266,33 +299,35 @@
       container.innerHTML = '';
 
       const filtered = mobileData.inventory.filter(i => 
-        i.company.toLowerCase().includes(query) || (i.ip_subnet && i.ip_subnet.includes(query))
+        (i.company && i.company.toLowerCase().includes(query)) || (i.ip_subnet && i.ip_subnet.includes(query))
       );
 
       if(filtered.length === 0) {
-        container.innerHTML = '<p style="color:#64748b; font-size:12px; text-align:center; padding:10px;">Kayıt bulunamadı.</p>';
+        container.innerHTML = '<p style="color:#64748b; font-size:12px; text-align:center; padding:15px;">Envanter notu bulunmuyor.</p>';
         return;
       }
 
-      filtered.forEach(item => {
+      filtered.forEach((item, index) => {
         const div = document.createElement('div');
-        div.style.cssText = "background:#0f172a; border:1px solid #334155; border-radius:10px; padding:12px; margin-top:8px;";
+        div.className = 'item-box';
         div.innerHTML = `
           <div style="font-weight:700; color:#38bdf8;">🏢 ${item.company}</div>
           <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">🌐 IP Subnet: <b>${item.ip_subnet || '-'}</b></div>
           <div style="font-size:12px; color:#cbd5e1;">🔒 VPN: <b>${item.vpn_details || item.vpn || '-'}</b></div>
-          <div style="font-size:12px; color:#fbbf24; margin-top:4px;">🔑 Giriş: <span id="pwd_${item.company.replace(/\s+/g, '')}">••••••••</span> 
-            <button onclick="togglePassword(this, '${(item.credentials || item.other_notes || 'Yok').replace(/'/g, "\\'")}')" style="background:none; border:none; color:#38bdf8; font-size:11px; text-decoration:underline; cursor:pointer;">Göster</button>
+          <div style="font-size:12px; color:#fbbf24; margin-top:4px;">🔑 Giriş / Notlar: <span id="pwd_${index}">••••••••</span> 
+            <button onclick="togglePassword(this, ${index})" style="background:none; border:none; color:#38bdf8; font-size:11px; text-decoration:underline; cursor:pointer;">Göster</button>
           </div>
         `;
         container.appendChild(div);
       });
     }
 
-    function togglePassword(btn, pwdText) {
-      const span = btn.previousElementSibling;
+    function togglePassword(btn, index) {
+      const span = document.getElementById('pwd_' + index);
+      const item = mobileData.inventory[index];
+      const text = item.credentials || item.other_notes || 'Bilgi yok';
       if(span.innerText === '••••••••') {
-        span.innerText = pwdText;
+        span.innerText = text;
         btn.innerText = 'Gizle';
       } else {
         span.innerText = '••••••••';
@@ -304,13 +339,21 @@
       const container = document.getElementById('todoList');
       container.innerHTML = '';
 
+      if(mobileData.todos.length === 0) {
+        container.innerHTML = '<p style="color:#64748b; font-size:12px; text-align:center; padding:15px;">Görev bulunmuyor.</p>';
+        return;
+      }
+
       mobileData.todos.forEach((t, index) => {
         const div = document.createElement('div');
-        div.style.cssText = "display:flex; align-items:center; justify-content:space-between; background:#0f172a; border:1px solid #334155; border-radius:10px; padding:10px; margin-top:8px;";
+        div.className = 'item-box';
+        div.style.cssText = "display:flex; align-items:center; justify-content:space-between;";
+        const isDone = t.is_done || t.done;
+        const title = t.title || t.description || 'Görev';
         div.innerHTML = `
-          <span style="font-size:13px; ${t.done ? 'text-decoration:line-through; color:#64748b;' : 'color:#f8fafc;'}">${t.title}</span>
-          <button onclick="toggleTodo(${index})" style="background:${t.done ? '#059669' : '#334155'}; border:none; color:#fff; border-radius:6px; padding:4px 8px; font-size:11px;">
-            ${t.done ? '✓ Tamam' : 'Tamamla'}
+          <span style="font-size:13px; ${isDone ? 'text-decoration:line-through; color:#64748b;' : 'color:#f8fafc;'}">${title}</span>
+          <button onclick="toggleTodo(${index})" style="background:${isDone ? '#059669' : '#334155'}; border:none; color:#fff; border-radius:6px; padding:4px 8px; font-size:11px;">
+            ${isDone ? '✓ Tamamlandı' : 'Tamamla'}
           </button>
         `;
         container.appendChild(div);
@@ -320,35 +363,81 @@
     function addTodo() {
       const title = document.getElementById('todoTitle').value.trim();
       if(!title) return;
-      mobileData.todos.push({ title: title, done: false });
+      mobileData.todos.push({ title: title, is_done: false });
       document.getElementById('todoTitle').value = '';
       saveDB();
       renderTodos();
     }
 
     function toggleTodo(index) {
-      mobileData.todos[index].done = !mobileData.todos[index].done;
+      mobileData.todos[index].is_done = !mobileData.todos[index].is_done;
       saveDB();
       renderTodos();
     }
 
     function updateStats() {
       document.getElementById('statSummary').innerHTML = `
-        📱 Telefonda Kayıtlı Ziyaret: <b>${mobileData.visits.length} adet</b><br>
+        📊 Toplam Ziyaret Kaydı: <b>${mobileData.visits.length} adet</b><br>
         🔑 Envanter Notları: <b>${mobileData.inventory.length} firma</b><br>
         📋 Görevler: <b>${mobileData.todos.length} adet</b>
       `;
+      
+      // Update Datalist for Company Input
+      const datalist = document.getElementById('companyDatalist');
+      datalist.innerHTML = '';
+      const cos = [...new Set(mobileData.inventory.map(i => i.company).concat(mobileData.visits.map(v => v.company)))];
+      cos.forEach(c => {
+        if(c) {
+          const opt = document.createElement('option');
+          opt.value = c;
+          datalist.appendChild(opt);
+        }
+      });
+    }
+
+    // 🚀 REST API AUTOMATIC SYNC SYSTEM
+    async function syncWithPC(silent = false) {
+      const badge = document.getElementById('syncBadge');
+      try {
+        // 1. Send mobile queued data to PC
+        const uploadPayload = {
+          version: "3.0",
+          data: {
+            visits: mobileData.visits,
+            company_notes: mobileData.inventory,
+            todos: mobileData.todos
+          }
+        };
+
+        const postRes = await fetch(`${API_BASE}/api/sync_upload`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(uploadPayload)
+        });
+
+        // 2. Fetch PC master data back to mobile
+        const getRes = await fetch(`${API_BASE}/api/sync_data`);
+        if(getRes.ok) {
+          const pcData = await getRes.json();
+          if(pcData && pcData.data) {
+            if(pcData.data.visits) mobileData.visits = pcData.data.visits;
+            if(pcData.data.company_notes) mobileData.inventory = pcData.data.company_notes;
+            if(pcData.data.todos) mobileData.todos = pcData.data.todos;
+            saveDB();
+          }
+          badge.className = "sync-badge sync-online";
+          badge.innerText = "🟢 Bilgisayarla Eşitlendi";
+          if(!silent) alert('🎉 Bilgisayarla canlı eşitleme başarıyla tamamlandı!');
+        }
+      } catch(err) {
+        badge.className = "sync-badge sync-offline";
+        badge.innerText = "🟠 Çevrimdışı (Eşitlenecek Kayıtlar Var)";
+        if(!silent) alert('⚠️ Bilgisayara bağlanılamadı. Wi-Fi ağını kontrol edin veya bilgisayardaki uygulamanın açık olduğundan emin olun.');
+      }
     }
 
     function exportMobileData() {
-      const exportObj = {
-        version: "3.0",
-        data: {
-          visits: mobileData.visits,
-          company_notes: mobileData.inventory,
-          todos: mobileData.todos
-        }
-      };
+      const exportObj = { version: "3.0", data: mobileData };
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
@@ -358,26 +447,12 @@
       downloadAnchor.remove();
     }
 
-    function importMobileData(event) {
-      const fileReader = new FileReader();
-      fileReader.onload = function(e) {
-        try {
-          const parsed = JSON.parse(e.target.result);
-          if(parsed.data) {
-            if(parsed.data.visits) mobileData.visits = parsed.data.visits;
-            if(parsed.data.company_notes) mobileData.inventory = parsed.data.company_notes;
-            if(parsed.data.todos) mobileData.todos = parsed.data.todos;
-            saveDB();
-            alert('🎉 Bilgisayardan gelen veriler telefona yüklendi!');
-          }
-        } catch(err) {
-          alert('Hata: Geçersiz JSON yedek dosyası!');
-        }
-      };
-      fileReader.readAsText(event.target.files[0]);
-    }
+    // Auto sync on startup
+    window.onload = function() {
+      updateStats();
+      syncWithPC(true);
+    };
 
-    // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/static/sw.js').catch(console.error);
     }

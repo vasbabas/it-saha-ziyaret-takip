@@ -14,6 +14,10 @@ import streamlit as st
 
 import database as db
 import reports as rpt
+import sync_server
+
+# Otomatik Mobil Eşitleme REST API sunucusunu başlat (Port 8502)
+sync_server.start_sync_server_once(8502)
 
 # ─────────────────────────────────────────────
 # Sayfa konfigurasyonu
