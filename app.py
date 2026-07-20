@@ -1700,7 +1700,7 @@ def render_mobile_qr_widget():
     except Exception:
         local_ip = "127.0.0.1"
         
-    mobile_url = f"http://{local_ip}:8501"
+    mobile_url = f"http://{local_ip}:8501/app/static/mobile_app.html"
     
     try:
         qr = qrcode.QRCode(version=1, box_size=4, border=1)
