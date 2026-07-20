@@ -1684,6 +1684,38 @@ def tab_backups():
                             st.rerun()
 
 
+def render_mobile_qr_widget():
+    """Mobil cihazlar için yerel ağ IP ve QR kod üretir."""
+    import socket
+    import qrcode
+    import io
+    import base64
+    
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.1)
+        s.connect(('8.8.8.8', 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        local_ip = "127.0.0.1"
+        
+    mobile_url = f"http://{local_ip}:8501"
+    
+    try:
+        qr = qrcode.QRCode(version=1, box_size=4, border=1)
+        qr.add_data(mobile_url)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="#000000", back_color="#ffffff")
+        buffered = io.BytesIO()
+        img.save(buffered, format="PNG")
+        qr_b64 = base64.b64encode(buffered.getvalue()).decode()
+    except Exception:
+        qr_b64 = ""
+        
+    return local_ip, mobile_url, qr_b64
+
+
 # ─────────────────────────────────────────────
 # ANA UYGULAMA
 # ─────────────────────────────────────────────
@@ -1776,6 +1808,19 @@ def main():
             <div style='background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; margin-top:16px;'>
                 <span style='font-size:9.5px; color:rgba(180,210,240,0.4); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;'>SİSTEM DURUMU</span>
                 <div style='margin-top:5px;'>{status_html}</div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Mobil erişim QR kod kartı
+            local_ip, mobile_url, qr_b64 = render_mobile_qr_widget()
+            qr_img_html = f"<img src='data:image/png;base64,{qr_b64}' style='width:110px; border-radius:8px; margin-top:6px; background:#fff; padding:4px;'>" if qr_b64 else ""
+            
+            st.markdown(f"""
+            <div style='background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; margin-top:12px; text-align:center;'>
+                <span style='font-size:9.5px; color:rgba(180,210,240,0.5); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;'>📱 MOBİL ERİŞİM (AYNI Wİ-Fİ)</span>
+                <div style='margin-top:4px;'>{qr_img_html}</div>
+                <div style='font-size:11px; color:#60B4FF; font-weight:600; margin-top:6px;'>{mobile_url}</div>
+                <div style='font-size:9.5px; color:rgba(180,210,240,0.5); margin-top:2px;'>Kameranızla QR kodu taratarak telefondan bağlanın</div>
             </div>
             </div>
             """, unsafe_allow_html=True)
