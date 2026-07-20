@@ -635,6 +635,25 @@ def tab_new_visit():
                 unsafe_allow_html=True)
     companies = cached_companies()
 
+    # Hazır Şablonlar
+    with st.expander("⚡ Hızlı Not Şablonu Yükle (Zaman Kazan)", expanded=False):
+        st.caption("Sık yaptığınız rutin BT işlemlerini tek tıkla forma aktarabilirsiniz:")
+        
+        TEMPLATES = {
+            "🖥️ Sunucu Rutin Bakımı": ("Sunucu Rutin Bakımı ve Sağlık Kontrolü", "— Sunucu diski doluluk oranları kontrol edildi.\n— Windows Update / Güvenlik yamaları uygulandı.\n— Event Viewer (Olay Görüntüleyici) sistem günlükleri incelendi, kritik hata tespit edilmedi.\n— Fiziksel sunucu fan ve sıcaklık değerleri normal."),
+            "🔥 Firewall & Ağ Kuralı": ("Firewall ve VLAN Kural Güncellemesi", "— Güvenlik duvarı (Firewall) erişim kuralları güncellendi.\n— Yeni departman için VLAN tanımlaması yapıldı.\n— VPN kullanıcı erişim yetkileri denetlendi.\n— Ağ bant genişliği kullanımı kontrol edildi."),
+            "💻 Kullanıcı PC Kurulumu": ("Kullanıcı Bilgisayarı Format ve Kurulum", "— Bilgisayar işletim sistemi yeniden kuruldu (Windows 11).\n— Şirket etki alanına (Domain) dahil edildi.\n— Antivirüs, Office ve gerekli iş yazılımları yüklendi.\n— Yazıcı ve ağ sürücüsü tanımları yapıldı, kullanıcıya teslim edildi."),
+            "💾 Yedekleme & Disk Kontrolü": ("Yedekleme Kontrolü ve Veri Sağlığı", "— Günlük ve haftalık yedekleme durumları (Veeam/NAS) kontrol edildi.\n— Örnek dosya geri yükleme (Restore) testi başarıyla tamamlandı.\n— Harici disk/NAS alan durumu kontrol edildi.\n— Yedekleme günlüklerinde hata bulunmadı."),
+            "🌐 Uzak Destek & Kullanıcı Sorunu": ("Kullanıcı Uzak Masaüstü Desteği", "— Kullanıcının karşılaştığı yazılım/yazıcı erişim sorunu çözüldü.\n— E-posta (Outlook) senkronizasyon hatası giderildi.\n— Gerekli güvenlik taraması yapıldı.")
+        }
+        
+        selected_template = st.selectbox("Şablon Seçin", [""] + list(TEMPLATES.keys()))
+        tpl_subject = ""
+        tpl_notes = ""
+        if selected_template and selected_template in TEMPLATES:
+            tpl_subject, tpl_notes = TEMPLATES[selected_template]
+            st.info(f"💡 Şablon Seçildi: **{selected_template}**")
+
     with st.form("new_visit_form", clear_on_submit=True):
         col1, col2 = st.columns(2, gap="medium")
         with col1:
@@ -652,12 +671,12 @@ def tab_new_visit():
 
         with col2:
             contact = st.text_input("📞 Bilgi / Iletisim Kisi", placeholder="Örn: Mehmet Bey (BT Muduru)")
-            subject = st.text_input("📌 Calisma Konusu", placeholder="Örn: Firewall Kural Guncelleme...")
+            subject = st.text_input("📌 Calisma Konusu", value=tpl_subject, placeholder="Örn: Firewall Kural Guncelleme...")
             da, db_ = st.columns(2)
             with da: duration = st.number_input("⏱️ Harcanan Sure (Saat)", min_value=0.0, max_value=24.0, value=1.0, step=0.5)
             with db_: status  = st.selectbox("✅ Durum", STATUS_OPTIONS, index=0)
 
-        work_notes = st.text_area("🔧 Yapilan Islemler & Teknik Notlar *", height=140,
+        work_notes = st.text_area("🔧 Yapilan Islemler & Teknik Notlar *", value=tpl_notes, height=140,
             placeholder="— Yedekleme unitesi kontrol edildi, disk sagligi OK.\n— Switch uzerinde VLAN tanimlari guncellendi.\n— 2 adet bilgisayara uzak destek verildi.")
 
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
@@ -1563,23 +1582,85 @@ def tab_inventory():
 # ─────────────────────────────────────────────
 
 def tab_backups():
-    st.markdown('<div class="section-title" style="font-size:15px">💾 Veritabani Yedekleme ve Sistem Yonetimi</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-title" style="font-size:15px">💾 Veri Transferi, Yedekleme ve Sistem Yönetimi</div>', unsafe_allow_html=True)
     
+    # ── 1. CİHAZLAR ARASI VERİ TRANSFERİ (EXPORT / IMPORT) ──
+    st.markdown("### 🌐 Cihazlar Arası Veri Transferi (Farklı PC'ye Taşıma)")
+    st.caption("Tüm kayıtlarınızı, firmalarınızı, yapılacakları, hatırlatıcıları ve ayarlarınızı tek bir dosya ile başka bir bilgisayara taşıyabilirsiniz.")
+    
+    col_exp, col_imp = st.columns(2, gap="large")
+    
+    with col_exp:
+        st.markdown("""
+        <div style='background:rgba(33,150,243,0.05); border:1px solid rgba(33,150,243,0.2); border-radius:14px; padding:16px;'>
+            <h4 style='margin:0 0 8px 0; color:#60B4FF;'>📤 Tüm Verileri Dışa Aktar</h4>
+            <p style='font-size:12px; color:rgba(180,210,240,0.7); margin-bottom:12px;'>
+                Mevcut tüm verilerinizi tek bir <b>JSON paket dosyası</b> olarak bilgisayarınıza indirir.
+            </p>
+        """, unsafe_allow_html=True)
+        
+        json_data = db.export_data_json()
+        ts_now = datetime.now().strftime("%Y%m%d_%H%M")
+        
+        st.download_button(
+            label="📥 Tüm Verileri Paket Olarak İndir (.json)",
+            data=json_data,
+            file_name=f"IT_Saha_Takip_PaketYedek_{ts_now}.json",
+            mime="application/json",
+            use_container_width=True,
+            type="primary"
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    with col_imp:
+        st.markdown("""
+        <div style='background:rgba(76,175,80,0.05); border:1px solid rgba(76,175,80,0.2); border-radius:14px; padding:16px;'>
+            <h4 style='margin:0 0 8px 0; color:#81C784;'>📥 Başka Cihazdan Veri İçe Aktar</h4>
+            <p style='font-size:12px; color:rgba(180,210,240,0.7); margin-bottom:12px;'>
+                Başka bir PC'den indirdiğiniz <b>.json yedek paketini</b> seçin ve yükleyin.
+            </p>
+        """, unsafe_allow_html=True)
+        
+        uploaded_file = st.file_uploader("Yedek Dosyası Seç (.json)", type=["json"], key="json_import_uploader")
+        
+        if uploaded_file is not None:
+            import_mode = st.radio("İçe Aktarım Modu", [
+                "🔄 Birleştir (Çift Kayıtları Atla - Güvenli)",
+                "⚠️ Üzerine Yaz (Tüm Yerel Verileri Sil ve Yükle)"
+            ], index=0)
+            
+            mode_code = "overwrite" if "Üzerine Yaz" in import_mode else "merge"
+            
+            if st.button("🚀 Verileri Veritabanına Yükle", type="primary", use_container_width=True):
+                file_content = uploaded_file.getvalue().decode("utf-8")
+                success, msg = db.import_data_json(file_content, mode=mode_code)
+                if success:
+                    invalidate_caches()
+                    st.success(f"🎉 {msg}")
+                    st.rerun()
+                else:
+                    st.error(f"❌ {msg}")
+                    
+        st.markdown("</div>", unsafe_allow_html=True)
+        
+    st.markdown("<hr style='border-color:rgba(255,255,255,0.08); margin: 30px 0;'>", unsafe_allow_html=True)
+    
+    # ── 2. LOKAL DİSK YEDEKLEME ──
+    st.markdown("### 💾 Bu Bilgisayardaki Otomatik SQLite Yedeği")
     c1, c2 = st.columns([1, 2], gap="large")
-    
     with c1:
-        st.markdown("#### 💾 Yeni Yedek Olustur")
-        st.write("Veritabani dosyasinin tam bir kopyasini backups/ klasorune kaydeder. Veri kaybi yasamamak icin duzenli yedek almaniz onerilir.")
-        if st.button("💾 Veritabanini Simdi Yedekle", type="primary", use_container_width=True):
+        st.markdown("#### 💾 Yeni Disk Yedeği Oluştur")
+        st.write("Veritabanı dosyasının tam bir kopyasını backups/ klasörüne kaydeder.")
+        if st.button("💾 Veritabanını Şimdi Yedekle", type="secondary", use_container_width=True):
             fn = db.create_backup()
-            st.success(f"✅ Yeni yedek basariyla olusturuldu: {fn}")
+            st.success(f"✅ Yeni yedek başarıyla oluşturuldu: {fn}")
             st.rerun()
             
     with c2:
         st.markdown("#### 📋 Mevcut Sistem Yedekleri")
         backups = db.list_backups()
         if not backups:
-            st.info("📭 Henuz olusturulmus bir yedek dosyasi bulunmuyor.")
+            st.info("📭 Henüz oluşturulmuş bir yedek dosyası bulunmuyor.")
         else:
             for b in backups:
                 bc1, bc2, bc3 = st.columns([3, 1, 1])
@@ -1591,15 +1672,15 @@ def tab_backups():
                         unsafe_allow_html=True
                     )
                 with bc2:
-                    if st.button("↩️ Geri Yukle", key=f"rest_{b['filename']}", help="Bu yedek dosyasini aktif veritabani olarak geri yukler"):
+                    if st.button("↩️ Geri Yükle", key=f"rest_{b['filename']}", help="Bu yedek dosyasını aktif veritabanı olarak geri yükler"):
                         if db.restore_backup(b['filename']):
                             invalidate_caches()
-                            st.success("✅ Veritabanı yedekten basariyla geri yuklendi! Sayfa yenileniyor...")
+                            st.success("✅ Veritabanı yedekten başarıyla geri yüklendi! Sayfa yenileniyor...")
                             st.rerun()
                 with bc3:
-                    if st.button("🗑️ Sil", key=f"del_bak_{b['filename']}", help="Yedek dosyasini kalici olarak siler"):
+                    if st.button("🗑️ Sil", key=f"del_bak_{b['filename']}", help="Yedek dosyasını kalıcı olarak siler"):
                         if db.delete_backup(b['filename']):
-                            st.warning("🗑️ Yedek dosyasi silindi.")
+                            st.warning("🗑️ Yedek dosyası silindi.")
                             st.rerun()
 
 

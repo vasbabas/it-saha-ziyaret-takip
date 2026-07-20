@@ -746,3 +746,112 @@ def set_setting(key: str, value: str):
     conn.commit()
     conn.close()
 
+
+def export_data_json() -> str:
+    """Tum veritabani tablolarini JSON formatinda paketler."""
+    import json
+    conn = get_connection()
+    cursor = conn.cursor()
+    
+    export_payload = {
+        "version": "3.0",
+        "exported_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "data": {}
+    }
+    
+    tables = ["visits", "reminders", "todos", "company_notes", "settings"]
+    for tbl in tables:
+        cursor.execute(f"SELECT * FROM {tbl}")
+        rows = [dict(r) for r in cursor.fetchall()]
+        export_payload["data"][tbl] = rows
+        
+    conn.close()
+    return json.dumps(export_payload, ensure_ascii=False, indent=2)
+
+
+def import_data_json(json_str: str, mode: str = "merge") -> tuple[bool, str]:
+    """JSON paketinden veritabanina aktarim yapar (merge veya overwrite)."""
+    import json
+    try:
+        payload = json.loads(json_str)
+        if "data" not in payload:
+            return False, "Gecersiz yedek dosyasi formati! ('data' anahtari bulunamadi)"
+            
+        data = payload["data"]
+        conn = get_connection()
+        cursor = conn.cursor()
+        
+        if mode == "overwrite":
+            for tbl in ["visits", "reminders", "todos", "company_notes", "settings"]:
+                cursor.execute(f"DELETE FROM {tbl}")
+                
+        # 1. Ziyaretler
+        visits = data.get("visits", [])
+        for v in visits:
+            if mode == "overwrite":
+                cursor.execute("""
+                    INSERT INTO visits (id, visit_date, company, contact, subject, work_notes, duration, technician, status, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (v.get("id"), v.get("visit_date"), v.get("company"), v.get("contact"), v.get("subject"), v.get("work_notes"), v.get("duration"), v.get("technician"), v.get("status"), v.get("created_at")))
+            else:
+                cursor.execute("SELECT id FROM visits WHERE visit_date=? AND company=? AND subject=?", (v.get("visit_date"), v.get("company"), v.get("subject")))
+                if not cursor.fetchone():
+                    cursor.execute("""
+                        INSERT INTO visits (visit_date, company, contact, subject, work_notes, duration, technician, status, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (v.get("visit_date"), v.get("company"), v.get("contact"), v.get("subject"), v.get("work_notes"), v.get("duration"), v.get("technician"), v.get("status"), v.get("created_at")))
+
+        # 2. Hatirlaticilar
+        reminders = data.get("reminders", [])
+        for r in reminders:
+            if mode == "overwrite":
+                cursor.execute("""
+                    INSERT INTO reminders (id, remind_date, company, title, notes, priority, is_done, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (r.get("id"), r.get("remind_date"), r.get("company"), r.get("title"), r.get("notes"), r.get("priority"), r.get("is_done"), r.get("created_at")))
+            else:
+                cursor.execute("SELECT id FROM reminders WHERE remind_date=? AND company=? AND title=?", (r.get("remind_date"), r.get("company"), r.get("title")))
+                if not cursor.fetchone():
+                    cursor.execute("""
+                        INSERT INTO reminders (remind_date, company, title, notes, priority, is_done, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (r.get("remind_date"), r.get("company"), r.get("title"), r.get("notes"), r.get("priority"), r.get("is_done"), r.get("created_at")))
+
+        # 3. Yapilacaklar
+        todos = data.get("todos", [])
+        for t in todos:
+            if mode == "overwrite":
+                cursor.execute("""
+                    INSERT INTO todos (id, visit_id, company, title, description, due_date, priority, is_done, done_at, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (t.get("id"), t.get("visit_id"), t.get("company"), t.get("title"), t.get("description"), t.get("due_date"), t.get("priority"), t.get("is_done"), t.get("done_at"), t.get("created_at")))
+            else:
+                cursor.execute("SELECT id FROM todos WHERE company=? AND title=?", (t.get("company"), t.get("title")))
+                if not cursor.fetchone():
+                    cursor.execute("""
+                        INSERT INTO todos (visit_id, company, title, description, due_date, priority, is_done, done_at, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (t.get("visit_id"), t.get("company"), t.get("title"), t.get("description"), t.get("due_date"), t.get("priority"), t.get("is_done"), t.get("done_at"), t.get("created_at")))
+
+        # 4. Firma Notlari
+        notes = data.get("company_notes", [])
+        for n in notes:
+            cursor.execute("""
+                INSERT OR REPLACE INTO company_notes (company, ip_subnet, vpn_details, credentials, other_notes, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (n.get("company"), n.get("ip_subnet"), n.get("vpn_details"), n.get("credentials"), n.get("other_notes"), n.get("updated_at")))
+
+        # 5. Ayarlar
+        settings = data.get("settings", [])
+        for s in settings:
+            cursor.execute("""
+                INSERT OR REPLACE INTO settings (key, value)
+                VALUES (?, ?)
+            """, (s.get("key"), s.get("value")))
+
+        conn.commit()
+        conn.close()
+        return True, "Tüm veriler başarıyla içe aktarıldı ve işlendi!"
+    except Exception as e:
+        return False, f"İçe aktarım hatası: {str(e)}"
+
