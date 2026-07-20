@@ -1649,6 +1649,27 @@ def tab_backups():
         
     st.markdown("<hr style='border-color:rgba(255,255,255,0.08); margin: 30px 0;'>", unsafe_allow_html=True)
     
+    # ── 2. ÇEVRİMDİŞİ MOBİL UYGULAMA PAKETİ İNDİR ──
+    st.markdown("### 📱 Çevrimdışı Mobil Uygulamayı İndir (İnternetsiz Paket)")
+    st.caption("Telefonunuza tek tıkla indirip %100 internetsiz ortamda (uçak modunda dahi) kullanabileceğiniz bağımsız mobil uygulama paketi.")
+    
+    try:
+        with open("static/mobile_app.html", "r", encoding="utf-8") as f:
+            mob_html_content = f.read()
+            
+        st.download_button(
+            label="📲 Çevrimdışı Mobil Uygulamayı İndir (.html / Cep Uygulaması)",
+            data=mob_html_content,
+            file_name="IT_Saha_Takip_Mobil.html",
+            mime="text/html",
+            type="primary",
+            use_container_width=True
+        )
+    except Exception as e:
+        st.error(f"Mobil dosya okunamadı: {e}")
+
+    st.markdown("<hr style='border-color:rgba(255,255,255,0.08); margin: 30px 0;'>", unsafe_allow_html=True)
+    
     # ── 2. LOKAL DİSK YEDEKLEME ──
     st.markdown("### 💾 Bu Bilgisayardaki Otomatik SQLite Yedeği")
     c1, c2 = st.columns([1, 2], gap="large")
