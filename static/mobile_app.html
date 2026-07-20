@@ -454,7 +454,12 @@
     };
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/static/sw.js').catch(console.error);
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/app/static/sw.js', { scope: '/app/static/' })
+          .catch(function() {
+            navigator.serviceWorker.register('/static/sw.js');
+          });
+      });
     }
   </script>
 </body>

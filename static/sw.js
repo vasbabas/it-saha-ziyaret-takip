@@ -1,6 +1,8 @@
-const CACHE_NAME = 'it-saha-takip-v1';
+const CACHE_NAME = 'it-saha-takip-v3';
 const ASSETS_TO_CACHE = [
+  '/app/static/mobile_app.html',
   '/static/mobile_app.html',
+  '/app/static/manifest.json',
   '/static/manifest.json'
 ];
 
@@ -29,15 +31,20 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Cache-first strategy for offline PWA support
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
+        // Fetch background update if online
+        fetch(event.request).then(response => {
+          if (response && response.status === 200) {
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, response));
+          }
+        }).catch(() => {});
         return cachedResponse;
       }
       return fetch(event.request).catch(() => {
-        if (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html')) {
-          return caches.match('/static/mobile_app.html');
-        }
+        return caches.match('/app/static/mobile_app.html') || caches.match('/static/mobile_app.html');
       });
     })
   );
