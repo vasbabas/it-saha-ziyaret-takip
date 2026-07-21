@@ -7,7 +7,7 @@ import 'database_service.dart';
 class SyncService {
   static const _ipKey = 'pc_ip_address';
   static const _portKey = 'pc_port';
-  static const int _timeout = 12;
+  static const int _timeout = 10;
 
   static Future<String> getSavedIP() async {
     final prefs = await SharedPreferences.getInstance();
@@ -31,12 +31,16 @@ class SyncService {
   static Future<bool> isReachable() async {
     try {
       final ip = await getSavedIP();
-      final port = await getSavedPort();
+      var port = await getSavedPort();
       if (ip.isEmpty) return false;
+
+      // Auto fallback to 8502 if 8501 was saved
+      if (port == 8501) port = 8502;
+
       final res = await http
           .get(Uri.parse('${_baseUrl(ip, port)}/api/sync_data'))
           .timeout(const Duration(seconds: _timeout));
-      return res.statusCode == 200;
+      return res.statusCode == 200 && !res.body.trim().startsWith('<');
     } catch (_) {
       return false;
     }
@@ -45,9 +49,16 @@ class SyncService {
   /// Full two-way sync: push local unsynced → pull all from PC
   static Future<SyncResult> fullSync() async {
     final ip = await getSavedIP();
-    final port = await getSavedPort();
+    var port = await getSavedPort();
+
     if (ip.isEmpty) {
       return SyncResult(success: false, message: 'Bilgisayar IP adresi girilmemiş.');
+    }
+
+    // Auto-correct port if user entered Streamlit port 8501
+    if (port == 8501) {
+      port = 8502;
+      await saveConnection(ip, 8502);
     }
 
     try {
@@ -60,7 +71,7 @@ class SyncService {
           'data': {
             'visits': unsyncedVisits.map((v) {
               final m = v.toJson();
-              m['contact'] = ''; // Ensure contact field is sent for PC SQLite
+              m['contact'] = ''; // Ensure contact field is set for Python SQLite
               return m;
             }).toList(),
             'company_notes': [],
@@ -92,10 +103,20 @@ class SyncService {
           .timeout(const Duration(seconds: _timeout));
 
       if (getRes.statusCode != 200) {
-        return SyncResult(success: false, message: 'Sunucudan veri yanıtı alınamadı (HTTP ${getRes.statusCode}).');
+        return SyncResult(
+            success: false,
+            message: 'Sunucu hatası: HTTP ${getRes.statusCode} (Port 8502 açık mı?)');
       }
 
-      final data = jsonDecode(getRes.body);
+      final bodyText = getRes.body.trim();
+      if (bodyText.startsWith('<')) {
+        return SyncResult(
+          success: false,
+          message: '⚠️ Port Uyuşmazlığı: Girdiğiniz port (8501) Web sunucusuna ait. Lütfen Port alanına 8502 yazın!',
+        );
+      }
+
+      final data = jsonDecode(bodyText);
       final pcData = data['data'] ?? data;
 
       // Import visits
@@ -133,13 +154,20 @@ class SyncService {
 
       return SyncResult(
         success: true,
-        message: '✅ Eşitleme tamamlandı! $pushed yeni kayıt PC\'ye gönderildi.',
+        message: '✅ Eşitleme başarılı! $pushed yeni kayıt PC\'ye aktarıldı.',
         pushed: pushed,
       );
     } catch (e) {
+      final errStr = e.toString();
+      if (errStr.contains('Unexpected character') || errStr.contains('FormatException')) {
+        return SyncResult(
+          success: false,
+          message: '⚠️ Port Hatası: Lütfen Port kısmına 8502 yazıp "Kaydet & Test Et" butonuna basın!',
+        );
+      }
       return SyncResult(
         success: false,
-        message: 'Eşitleme Hatası: $e',
+        message: 'Bağlantı Hatası: Bilgisayar açık ve aynı Wi-Fi ağında mı? ($e)',
       );
     }
   }

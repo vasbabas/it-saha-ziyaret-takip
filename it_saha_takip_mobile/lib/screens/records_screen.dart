@@ -175,7 +175,11 @@ class _RecordsScreenState extends State<RecordsScreen> {
   String _formatDate(String raw) {
     try {
       final d = DateTime.parse(raw);
-      return DateFormat('dd MMM yyyy', 'tr').format(d);
+      final months = [
+        'Ock', 'Şbt', 'Mrt', 'Nsn', 'May', 'Hzr',
+        'Tem', 'Ağu', 'Eyl', 'Ekm', 'Ksm', 'Arl'
+      ];
+      return '${d.day} ${months[d.month - 1]} ${d.year}';
     } catch (_) {
       return raw;
     }

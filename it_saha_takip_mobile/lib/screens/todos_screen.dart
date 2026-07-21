@@ -11,7 +11,9 @@ class TodosScreen extends StatefulWidget {
 
 class _TodosScreenState extends State<TodosScreen> {
   final _addCtrl = TextEditingController();
+  final _focusNode = FocusNode();
   List<Todo> _todos = [];
+  bool _loading = false;
 
   @override
   void initState() {
@@ -20,24 +22,66 @@ class _TodosScreenState extends State<TodosScreen> {
   }
 
   Future<void> _load() async {
-    final todos = await DatabaseService.getTodos();
-    setState(() => _todos = todos);
+    try {
+      final todos = await DatabaseService.getTodos();
+      if (mounted) setState(() => _todos = todos);
+    } catch (_) {}
   }
 
   Future<void> _add() async {
     final t = _addCtrl.text.trim();
-    if (t.isEmpty) return;
-    await DatabaseService.insertTodo(Todo(title: t));
-    _addCtrl.clear();
-    _load();
+    if (t.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ Lütfen önce bir görev tanımı yazın!'),
+          backgroundColor: Color(0xFFD97706),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      _focusNode.requestFocus();
+      return;
+    }
+
+    _focusNode.unfocus();
+    setState(() => _loading = true);
+
+    try {
+      final todo = Todo(title: t);
+      await DatabaseService.insertTodo(todo);
+      _addCtrl.clear();
+      await _load();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Görev listeye eklendi!'),
+            backgroundColor: Color(0xFF059669),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _toggle(Todo todo) async {
+    if (todo.id == null) return;
     await DatabaseService.updateTodoDone(todo.id!, !todo.isDone);
     _load();
   }
 
   Future<void> _delete(Todo todo) async {
+    if (todo.id == null) return;
     await DatabaseService.deleteTodo(todo.id!);
     _load();
   }
@@ -49,34 +93,56 @@ class _TodosScreenState extends State<TodosScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('📋 Görevler',
+        title: const Text('📋 Görev Listem',
             style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
       ),
       body: Column(
         children: [
-          // Add new todo
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          // Add new todo container
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: const Color(0xFF1E293B),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _addCtrl,
+                    focusNode: _focusNode,
                     onSubmitted: (_) => _add(),
-                    decoration: const InputDecoration(
-                      hintText: 'Yeni görev ekle...',
-                      prefixIcon: Icon(Icons.add_task, color: Color(0xFF64748B)),
+                    textInputAction: TextInputAction.done,
+                    decoration: InputDecoration(
+                      hintText: 'Görev yazın (Örn: Server yedek kontrol et)...',
+                      hintStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                      prefixIcon: const Icon(Icons.add_task, color: Color(0xFF3B82F6)),
+                      suffixIcon: _addCtrl.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                _addCtrl.clear();
+                                setState(() {});
+                              },
+                            )
+                          : null,
                     ),
+                    onChanged: (_) => setState(() {}),
                   ),
                 ),
                 const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: _add,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                Material(
+                  color: const Color(0xFF2563EB),
+                  borderRadius: BorderRadius.circular(12),
+                  child: InkWell(
+                    onTap: _loading ? null : _add,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 24, height: 24,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Icon(Icons.add, color: Colors.white, size: 26),
+                    ),
                   ),
-                  child: const Icon(Icons.add),
                 ),
               ],
             ),
@@ -85,14 +151,14 @@ class _TodosScreenState extends State<TodosScreen> {
             child: _todos.isEmpty
                 ? _emptyState()
                 : ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    padding: const EdgeInsets.all(16),
                     children: [
                       if (pending.isNotEmpty) ...[
-                        _sectionHeader('📌 Bekleyen (${pending.length})'),
+                        _sectionHeader('📌 BEKLEYEN GÖREVLER (${pending.length})'),
                         ...pending.map((t) => _buildTodoCard(t)),
                       ],
                       if (done.isNotEmpty) ...[
-                        _sectionHeader('✅ Tamamlanan (${done.length})'),
+                        _sectionHeader('✅ TAMAMLATILAN GÖREVLER (${done.length})'),
                         ...done.map((t) => _buildTodoCard(t)),
                       ],
                     ],
@@ -105,11 +171,11 @@ class _TodosScreenState extends State<TodosScreen> {
 
   Widget _sectionHeader(String text) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 12, 0, 6),
+      padding: const EdgeInsets.fromLTRB(0, 12, 0, 8),
       child: Text(text,
           style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
               color: Color(0xFF94A3B8),
               letterSpacing: 0.5)),
     );
@@ -120,11 +186,12 @@ class _TodosScreenState extends State<TodosScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        leading: GestureDetector(
+        leading: InkWell(
           onTap: () => _toggle(todo),
+          borderRadius: BorderRadius.circular(15),
           child: Container(
-            width: 24,
-            height: 24,
+            width: 28,
+            height: 28,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: todo.isDone ? const Color(0xFF059669) : Colors.transparent,
@@ -134,7 +201,7 @@ class _TodosScreenState extends State<TodosScreen> {
               ),
             ),
             child: todo.isDone
-                ? const Icon(Icons.check, size: 14, color: Colors.white)
+                ? const Icon(Icons.check, size: 16, color: Colors.white)
                 : null,
           ),
         ),
@@ -147,7 +214,7 @@ class _TodosScreenState extends State<TodosScreen> {
           ),
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.delete_outline, color: Color(0xFF475569), size: 20),
+          icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
           onPressed: () => _delete(todo),
         ),
       ),
@@ -161,10 +228,11 @@ class _TodosScreenState extends State<TodosScreen> {
         children: [
           Icon(Icons.checklist, size: 72, color: Colors.white.withAlpha(30)),
           const SizedBox(height: 16),
-          const Text('Görev bulunamadı',
+          const Text('Henüz görev eklenmemiş',
               style: TextStyle(color: Color(0xFF64748B), fontSize: 16)),
           const SizedBox(height: 8),
-          const Text('Yukarıdan yeni görev ekleyin.',
+          const Text('Yukarıdaki metin kutusuna görev yazıp\nartı (+) butonuna basın.',
+              textAlign: TextAlign.center,
               style: TextStyle(color: Color(0xFF475569), fontSize: 13)),
         ],
       ),
@@ -174,6 +242,7 @@ class _TodosScreenState extends State<TodosScreen> {
   @override
   void dispose() {
     _addCtrl.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 }

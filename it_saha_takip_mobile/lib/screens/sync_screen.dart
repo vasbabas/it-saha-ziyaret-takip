@@ -42,7 +42,23 @@ class _SyncScreenState extends State<SyncScreen> {
 
   Future<void> _saveSettings() async {
     final ip = _ipCtrl.text.trim();
-    final port = int.tryParse(_portCtrl.text.trim()) ?? 8502;
+    var port = int.tryParse(_portCtrl.text.trim()) ?? 8502;
+    
+    // Auto-fix 8501 -> 8502
+    if (port == 8501) {
+      port = 8502;
+      _portCtrl.text = '8502';
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('ℹ️ Eşitleme portu otomatik 8502 olarak düzeltildi (8501 Web portudur).'),
+            backgroundColor: Color(0xFF2563EB),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+    
     await SyncService.saveConnection(ip, port);
     await _checkConnection();
   }
