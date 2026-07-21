@@ -107,6 +107,16 @@ def init_db():
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_todos_done       ON todos(is_done)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_comp_notes_co    ON company_notes(company)")
 
+    # Resim / Fotograf ekleri destegi
+    try:
+        cursor.execute("ALTER TABLE visits ADD COLUMN image_data TEXT")
+    except Exception:
+        pass
+    try:
+        cursor.execute("ALTER TABLE company_notes ADD COLUMN image_data TEXT")
+    except Exception:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -124,16 +134,17 @@ def add_visit(
     duration: float = 0.0,
     technician: str = "",
     status: str = "Tamamlandi",
+    image_data: str = "",
 ) -> int:
     """Yeni bir ziyaret kaydi ekler. Yeni eklenen kaydin ID'sini dondurur."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
         """
-        INSERT INTO visits (visit_date, company, contact, subject, work_notes, duration, technician, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO visits (visit_date, company, contact, subject, work_notes, duration, technician, status, image_data)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        (visit_date, company, contact, subject, work_notes, duration, technician, status),
+        (visit_date, company, contact, subject, work_notes, duration, technician, status, image_data),
     )
     new_id = cursor.lastrowid
     conn.commit()
@@ -603,23 +614,24 @@ def get_company_notes(company: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
-def save_company_notes(company: str, ip_subnet: str = "", vpn_details: str = "", credentials: str = "", other_notes: str = ""):
+def save_company_notes(company: str, ip_subnet: str = "", vpn_details: str = "", credentials: str = "", other_notes: str = "", image_data: str = ""):
     """Firma BT envanter notlarini kaydeder (varsa gunceller, yoksa ekler)."""
     conn = get_connection()
     cursor = conn.cursor()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     cursor.execute(
         """
-        INSERT INTO company_notes (company, ip_subnet, vpn_details, credentials, other_notes, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO company_notes (company, ip_subnet, vpn_details, credentials, other_notes, updated_at, image_data)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(company) DO UPDATE SET
             ip_subnet = excluded.ip_subnet,
             vpn_details = excluded.vpn_details,
             credentials = excluded.credentials,
             other_notes = excluded.other_notes,
-            updated_at = excluded.updated_at
+            updated_at = excluded.updated_at,
+            image_data = COALESCE(NULLIF(excluded.image_data, ''), company_notes.image_data)
         """,
-        (company.strip(), ip_subnet.strip(), vpn_details.strip(), credentials.strip(), other_notes.strip(), now),
+        (company.strip(), ip_subnet.strip(), vpn_details.strip(), credentials.strip(), other_notes.strip(), now, image_data),
     )
     conn.commit()
     conn.close()
@@ -788,18 +800,22 @@ def import_data_json(json_str: str, mode: str = "merge") -> tuple[bool, str]:
         # 1. Ziyaretler
         visits = data.get("visits", [])
         for v in visits:
+            img = v.get("image_data") or ""
             if mode == "overwrite":
                 cursor.execute("""
-                    INSERT INTO visits (id, visit_date, company, contact, subject, work_notes, duration, technician, status, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (v.get("id"), v.get("visit_date"), v.get("company"), v.get("contact"), v.get("subject"), v.get("work_notes"), v.get("duration"), v.get("technician"), v.get("status"), v.get("created_at")))
+                    INSERT INTO visits (id, visit_date, company, contact, subject, work_notes, duration, technician, status, created_at, image_data)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (v.get("id"), v.get("visit_date"), v.get("company"), v.get("contact"), v.get("subject"), v.get("work_notes"), v.get("duration"), v.get("technician"), v.get("status"), v.get("created_at"), img))
             else:
                 cursor.execute("SELECT id FROM visits WHERE visit_date=? AND company=? AND subject=?", (v.get("visit_date"), v.get("company"), v.get("subject")))
-                if not cursor.fetchone():
+                row = cursor.fetchone()
+                if not row:
                     cursor.execute("""
-                        INSERT INTO visits (visit_date, company, contact, subject, work_notes, duration, technician, status, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (v.get("visit_date"), v.get("company"), v.get("contact"), v.get("subject"), v.get("work_notes"), v.get("duration"), v.get("technician"), v.get("status"), v.get("created_at")))
+                        INSERT INTO visits (visit_date, company, contact, subject, work_notes, duration, technician, status, created_at, image_data)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (v.get("visit_date"), v.get("company"), v.get("contact"), v.get("subject"), v.get("work_notes"), v.get("duration"), v.get("technician"), v.get("status"), v.get("created_at"), img))
+                elif img:
+                    cursor.execute("UPDATE visits SET image_data = ? WHERE id = ?", (img, row["id"]))
 
         # 2. Hatirlaticilar
         reminders = data.get("reminders", [])
@@ -842,9 +858,16 @@ def import_data_json(json_str: str, mode: str = "merge") -> tuple[bool, str]:
         for n in notes:
             if n.get("company"):
                 cursor.execute("""
-                    INSERT OR REPLACE INTO company_notes (company, ip_subnet, vpn_details, credentials, other_notes, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                """, (n.get("company"), n.get("ip_subnet"), n.get("vpn_details"), n.get("credentials"), n.get("other_notes"), n.get("updated_at") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+                    INSERT INTO company_notes (company, ip_subnet, vpn_details, credentials, other_notes, updated_at, image_data)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(company) DO UPDATE SET
+                        ip_subnet = excluded.ip_subnet,
+                        vpn_details = excluded.vpn_details,
+                        credentials = excluded.credentials,
+                        other_notes = excluded.other_notes,
+                        updated_at = excluded.updated_at,
+                        image_data = COALESCE(NULLIF(excluded.image_data, ''), company_notes.image_data)
+                """, (n.get("company"), n.get("ip_subnet"), n.get("vpn_details"), n.get("credentials"), n.get("other_notes"), n.get("updated_at") or datetime.now().strftime("%Y-%m-%d %H:%M:%S"), n.get("image_data") or ""))
 
         # 5. Ayarlar
         settings = data.get("settings", [])

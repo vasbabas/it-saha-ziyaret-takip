@@ -1,5 +1,8 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
@@ -18,6 +21,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   final Set<String> _expandedCompanies = {};
   bool _loading = true;
 
+  final _picker = ImagePicker();
+
   @override
   void initState() {
     super.initState();
@@ -30,11 +35,36 @@ class _InventoryScreenState extends State<InventoryScreen> {
     setState(() {
       _notes = notes;
       _loading = false;
-      // Auto expand all if query is typed
       if (query != null && query.isNotEmpty) {
         _expandedCompanies.addAll(notes.map((n) => n.company));
       }
     });
+  }
+
+  void _showImageDialog(String base64Str) {
+    try {
+      final bytes = base64Decode(base64Str);
+      showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(12),
+          child: Stack(
+            alignment: Alignment.topRight,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.memory(bytes, fit: BoxFit.contain),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(ctx),
+              ),
+            ],
+          ),
+        ),
+      );
+    } catch (_) {}
   }
 
   void _showAddNoteDialog() {
@@ -45,6 +75,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final notesCtrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
+    String? base64Image;
+    Uint8List? imageBytes;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -53,129 +86,213 @@ class _InventoryScreenState extends State<InventoryScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            top: 20,
-            left: 16,
-            right: 16,
-          ),
-          child: Form(
-            key: formKey,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return StatefulBuilder(
+          builder: (dialogCtx, setDialogState) {
+            Future<void> pickImg(ImageSource source) async {
+              try {
+                final file = await _picker.pickImage(
+                  source: source,
+                  maxWidth: 1024,
+                  maxHeight: 1024,
+                  imageQuality: 80,
+                );
+                if (file != null) {
+                  final b = await file.readAsBytes();
+                  setDialogState(() {
+                    imageBytes = b;
+                    base64Image = base64Encode(b);
+                  });
+                }
+              } catch (_) {}
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(dialogCtx).viewInsets.bottom + 20,
+                top: 20,
+                left: 16,
+                right: 16,
+              ),
+              child: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('🔑 Yeni Envanter & Şifre Ekle',
-                          style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF38BDF8))),
-                      IconButton(
-                        icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
-                        onPressed: () => Navigator.pop(ctx),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('🔑 Yeni Envanter & Şifre Ekle',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF38BDF8))),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Color(0xFF94A3B8)),
+                            onPressed: () => Navigator.pop(dialogCtx),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      TextFormField(
+                        controller: companyCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Firma / Kurum Adı *',
+                          hintText: 'Örn: ABC Holding',
+                          prefixIcon: Icon(Icons.business, color: Color(0xFF64748B)),
+                        ),
+                        validator: (v) => v == null || v.trim().isEmpty ? 'Firma adı zorunlu' : null,
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: ipCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'IP / Subnet / Blok',
+                          hintText: 'Örn: 192.168.1.0/24',
+                          prefixIcon: Icon(Icons.lan_outlined, color: Color(0xFF64748B)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: vpnCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'VPN / Uzak Erişim Detayları',
+                          hintText: 'Örn: FortiClient SSL-VPN vpn.firma.com',
+                          prefixIcon: Icon(Icons.vpn_lock_outlined, color: Color(0xFF64748B)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: credCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Giriş Bilgileri (Kullanıcı & Şifre)',
+                          hintText: 'Örn: admin / Secr3tP@ss!',
+                          prefixIcon: Icon(Icons.lock_outlined, color: Color(0xFF64748B)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: notesCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'Diğer Notlar / Açıklama',
+                          hintText: 'Sunucu modelleri, yetkili kişi telefon vb...',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Photo Button in Modal
+                      if (imageBytes == null)
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: dialogCtx,
+                              backgroundColor: const Color(0xFF0F172A),
+                              builder: (bCtx) => SafeArea(
+                                child: Wrap(
+                                  children: [
+                                    ListTile(
+                                      leading: const Icon(Icons.camera_alt, color: Color(0xFF38BDF8)),
+                                      title: const Text('📷 Kamera İle Çek', style: TextStyle(color: Colors.white)),
+                                      onTap: () {
+                                        Navigator.pop(bCtx);
+                                        pickImg(ImageSource.camera);
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: const Icon(Icons.photo_library, color: Color(0xFF38BDF8)),
+                                      title: const Text('🖼️ Galeriden Seç', style: TextStyle(color: Colors.white)),
+                                      onTap: () {
+                                        Navigator.pop(bCtx);
+                                        pickImg(ImageSource.gallery);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.add_a_photo, color: Color(0xFF38BDF8), size: 18),
+                          label: const Text('📷 Kabin / Cihaz Fotoğrafı Ekle', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 13)),
+                        )
+                      else
+                        Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            Container(
+                              height: 120,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFF38BDF8)),
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.memory(imageBytes!, fit: BoxFit.cover),
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, color: Colors.red),
+                              onPressed: () => setDialogState(() {
+                                imageBytes = null;
+                                base64Image = null;
+                              }),
+                            ),
+                          ],
+                        ),
+
+                      const SizedBox(height: 20),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            if (!formKey.currentState!.validate()) return;
+                            final note = CompanyNote(
+                              company: companyCtrl.text.trim(),
+                              ipSubnet: ipCtrl.text.trim().isEmpty ? null : ipCtrl.text.trim(),
+                              vpnDetails: vpnCtrl.text.trim().isEmpty ? null : vpnCtrl.text.trim(),
+                              credentials: credCtrl.text.trim().isEmpty ? null : credCtrl.text.trim(),
+                              otherNotes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+                              synced: false,
+                              imageData: base64Image,
+                            );
+
+                            await DatabaseService.insertCompanyNote(note);
+                            if (mounted) Navigator.pop(dialogCtx);
+                            _load();
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('✅ Envanter kaydı eklendi! Eşitleniyor...'),
+                                  backgroundColor: Color(0xFF059669),
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            }
+
+                            SyncService.fullSync();
+                          },
+                          icon: const Icon(Icons.save),
+                          label: const Text('💾 Envanteri Kaydet'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
-
-                  TextFormField(
-                    controller: companyCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Firma / Kurum Adı *',
-                      hintText: 'Örn: ABC Holding',
-                      prefixIcon: Icon(Icons.business, color: Color(0xFF64748B)),
-                    ),
-                    validator: (v) => v == null || v.trim().isEmpty ? 'Firma adı zorunlu' : null,
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextFormField(
-                    controller: ipCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'IP / Subnet / Blok',
-                      hintText: 'Örn: 192.168.1.0/24',
-                      prefixIcon: Icon(Icons.lan_outlined, color: Color(0xFF64748B)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextFormField(
-                    controller: vpnCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'VPN / Uzak Erişim Detayları',
-                      hintText: 'Örn: FortiClient SSL-VPN vpn.firma.com',
-                      prefixIcon: Icon(Icons.vpn_lock_outlined, color: Color(0xFF64748B)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextFormField(
-                    controller: credCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Giriş Bilgileri (Kullanıcı & Şifre)',
-                      hintText: 'Örn: admin / Secr3tP@ss!',
-                      prefixIcon: Icon(Icons.lock_outlined, color: Color(0xFF64748B)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  TextFormField(
-                    controller: notesCtrl,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Diğer Notlar / Açıklama',
-                      hintText: 'Sunucu modelleri, yetkili kişi telefon vb...',
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        if (!formKey.currentState!.validate()) return;
-                        final note = CompanyNote(
-                          company: companyCtrl.text.trim(),
-                          ipSubnet: ipCtrl.text.trim().isEmpty ? null : ipCtrl.text.trim(),
-                          vpnDetails: vpnCtrl.text.trim().isEmpty ? null : vpnCtrl.text.trim(),
-                          credentials: credCtrl.text.trim().isEmpty ? null : credCtrl.text.trim(),
-                          otherNotes: notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
-                          synced: false,
-                        );
-
-                        await DatabaseService.insertCompanyNote(note);
-                        if (mounted) Navigator.pop(ctx);
-                        _load();
-
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✅ Envanter kaydı eklendi! Eşitleniyor...'),
-                              backgroundColor: Color(0xFF059669),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
-
-                        // Auto sync in background
-                        SyncService.fullSync();
-                      },
-                      icon: const Icon(Icons.save),
-                      label: const Text('💾 Envanteri Kaydet'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -193,7 +310,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ),
       body: Column(
         children: [
-          // Top Bar with Search & Add Button
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(
@@ -251,6 +367,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Widget _buildCompanyFolderCard(CompanyNote n, int index) {
     final isExpanded = _expandedCompanies.contains(n.company);
     final revealed = _revealed.contains(index);
+
+    Uint8List? imageBytes;
+    if (n.imageData != null && n.imageData!.isNotEmpty) {
+      try {
+        imageBytes = base64Decode(n.imageData!);
+      } catch (_) {}
+    }
 
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
@@ -424,6 +547,26 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   if (n.otherNotes != null && n.otherNotes!.isNotEmpty) ...[
                     const SizedBox(height: 10),
                     _infoRow(Icons.notes_outlined, 'Açıklama Notu', n.otherNotes!),
+                  ],
+
+                  // Photo Attachment Preview
+                  if (imageBytes != null) ...[
+                    const SizedBox(height: 10),
+                    GestureDetector(
+                      onTap: () => _showImageDialog(n.imageData!),
+                      child: Container(
+                        height: 120,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF334155)),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.memory(imageBytes, width: double.infinity, fit: BoxFit.cover),
+                        ),
+                      ),
+                    ),
                   ],
 
                   if (!n.synced)

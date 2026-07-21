@@ -683,6 +683,12 @@ def tab_new_visit():
         work_notes = st.text_area("🔧 Yapilan Islemler & Teknik Notlar *", value=tpl_notes, height=140,
             placeholder="— Yedekleme unitesi kontrol edildi, disk sagligi OK.\n— Switch uzerinde VLAN tanimlari guncellendi.\n— 2 adet bilgisayara uzak destek verildi.")
 
+        img_file = st.file_uploader("📷 Fotoğraf / Ek Görsel Yükle (PNG/JPG)", type=["png", "jpg", "jpeg"], key="visit_img_up")
+        img_base64 = ""
+        if img_file:
+            import base64
+            img_base64 = base64.b64encode(img_file.read()).decode("utf-8")
+
         st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
         submitted = st.form_submit_button("💾 Calismayi Kaydet", use_container_width=True, type="primary")
 
@@ -692,7 +698,7 @@ def tab_new_visit():
         else:
             nid = db.add_visit(visit_date=visit_date.strftime("%Y-%m-%d"), company=company,
                                contact=contact, subject=subject, work_notes=work_notes,
-                               duration=duration, technician=category, status=status)
+                               duration=duration, technician=category, status=status, image_data=img_base64)
             invalidate_caches()
             st.success(f"✅ Calisma basariyla kaydedildi! (Kayit ID: #{nid})")
             st.balloons()
@@ -1122,48 +1128,64 @@ def tab_all_records():
         st.info("📭 Kriterlere uygun kayıt bulunamadı.")
         return
 
-    st.caption(f"Toplam **{len(visits)}** faaliyet kaydı")
-
+    # Group visits by company
+    grouped = {}
     for v in visits:
-        vid = v["id"]
-        lbl = f"#{vid:03d} · 📅 {fmt_date(v['visit_date'])} · 🏢 {v['company']} · {(v.get('subject') or '—')[:45]}"
-        with st.expander(lbl):
-            vc, ec = st.columns([3,2], gap="medium")
-            with vc:
-                for k,val in [("Tarih", fmt_date(v["visit_date"])), ("Firma/Bölüm", v["company"]),
-                              ("İlgili Kişi", v.get("contact") or "—"), ("Konu", v.get("subject") or "—"),
-                              ("Kategori", v.get("technician") or "Diğer IT İşleri"),
-                              ("Süre", f"{v.get('duration',0):.1f} saat"), ("Durum", v.get("status") or "—")]:
-                    st.markdown(f"<span style='color:rgba(160,200,240,.65);font-size:12.5px'>{k}:</span> "
-                                f"<span style='font-weight:500'>{val}</span>", unsafe_allow_html=True)
-                st.markdown("<br>**🔧 Yapılan Teknik İşlemler:**")
-                st.markdown(f"<div style='background:rgba(255,255,255,0.035);border-radius:10px;"
-                            f"padding:10px 14px;font-size:13px;color:#B0C8E0;white-space:pre-wrap'>"
-                            f"{v.get('work_notes','—')}</div>", unsafe_allow_html=True)
-            with ec:
-                st.markdown("**✏️ Kaydi Guncelle**")
-                with st.form(f"ef_{vid}"):
-                    ed  = st.date_input("Tarih",     value=datetime.strptime(v["visit_date"],"%Y-%m-%d").date(), key=f"ed_{vid}")
-                    ec2 = st.text_input("Firma/Bölüm", value=v["company"],         key=f"eco_{vid}")
-                    ect = st.text_input("İlgili Kişi", value=v.get("contact",""),  key=f"ect_{vid}")
-                    es  = st.text_input("Konu",      value=v.get("subject",""),    key=f"es_{vid}")
-                    et  = st.selectbox("Kategori", CATEGORIES,
-                                       index=CATEGORIES.index(v.get("technician")) if v.get("technician") in CATEGORIES else 0,
-                                       key=f"et_{vid}")
-                    edu = st.number_input("Süre (sa)", value=float(v.get("duration",0)), step=0.5, key=f"edu_{vid}")
-                    safe_status = v.get("status","Tamamlandi") if v.get("status") in STATUS_OPTIONS else "Tamamlandi"
-                    est = st.selectbox("Durum", STATUS_OPTIONS,
-                                       index=STATUS_OPTIONS.index(safe_status), key=f"est_{vid}")
-                    en  = st.text_area("Yapılan Teknik İşlem", value=v.get("work_notes",""), height=80, key=f"en_{vid}")
-                    sb,db_b = st.columns(2)
-                    with sb:  save = st.form_submit_button("💾 Kaydet", type="primary", use_container_width=True)
-                    with db_b: dlt = st.form_submit_button("🗑️ Sil", use_container_width=True)
-                if save:
-                    db.update_visit(vid, ed.strftime("%Y-%m-%d"), ec2, ect, es, en, edu, et, est)
-                    invalidate_caches(); st.success("✅ Güncellendi!"); st.rerun()
-                if dlt:
-                    db.delete_visit(vid); invalidate_caches()
-                    st.warning(f"🗑️ #{vid} silindi."); st.rerun()
+        co = v["company"].strip() or "Belirtilmemiş Firma"
+        grouped.setdefault(co, []).append(v)
+
+    st.caption(f"Toplam **{len(visits)}** faaliyet kaydı ({len(grouped)} Firma Klasörü)")
+
+    for co_name, co_visits in sorted(grouped.items()):
+        total_co_hrs = sum(v.get("duration", 0) for v in co_visits)
+        with st.expander(f"📁 {co_name} — {len(co_visits)} Ziyaret Kaydı (Toplam {total_co_hrs:.1f} Saat)", expanded=False):
+            for v in co_visits:
+                vid = v["id"]
+                st.markdown(f"#### 📅 {fmt_date(v['visit_date'])} — {v.get('subject') or '—'} (#{vid:03d})")
+                vc, ec = st.columns([3,2], gap="medium")
+                with vc:
+                    for k,val in [("Tarih", fmt_date(v["visit_date"])), ("Firma/Bölüm", v["company"]),
+                                  ("İlgili Kişi", v.get("contact") or "—"), ("Konu", v.get("subject") or "—"),
+                                  ("Kategori", v.get("technician") or "Diğer IT İşleri"),
+                                  ("Süre", f"{v.get('duration',0):.1f} saat"), ("Durum", v.get("status") or "—")]:
+                        st.markdown(f"<span style='color:rgba(160,200,240,.65);font-size:12.5px'>{k}:</span> "
+                                    f"<span style='font-weight:500'>{val}</span>", unsafe_allow_html=True)
+                    st.markdown("<br>**🔧 Yapılan Teknik İşlemler:**")
+                    st.markdown(f"<div style='background:rgba(255,255,255,0.035);border-radius:10px;"
+                                f"padding:10px 14px;font-size:13px;color:#B0C8E0;white-space:pre-wrap'>"
+                                f"{v.get('work_notes','—')}</div>", unsafe_allow_html=True)
+
+                    if v.get("image_data"):
+                        import base64
+                        try:
+                            st.image(base64.b64decode(v["image_data"]), caption="📷 Ekteki Fotoğraf", use_column_width=True)
+                        except Exception:
+                            pass
+                with ec:
+                    st.markdown("**✏️ Kaydı Güncelle**")
+                    with st.form(f"ef_{vid}"):
+                        ed  = st.date_input("Tarih",     value=datetime.strptime(v["visit_date"],"%Y-%m-%d").date(), key=f"ed_{vid}")
+                        ec2 = st.text_input("Firma/Bölüm", value=v["company"],         key=f"eco_{vid}")
+                        ect = st.text_input("İlgili Kişi", value=v.get("contact",""),  key=f"ect_{vid}")
+                        es  = st.text_input("Konu",      value=v.get("subject",""),    key=f"es_{vid}")
+                        et  = st.selectbox("Kategori", CATEGORIES,
+                                           index=CATEGORIES.index(v.get("technician")) if v.get("technician") in CATEGORIES else 0,
+                                           key=f"et_{vid}")
+                        edu = st.number_input("Süre (sa)", value=float(v.get("duration",0)), step=0.5, key=f"edu_{vid}")
+                        safe_status = v.get("status","Tamamlandi") if v.get("status") in STATUS_OPTIONS else "Tamamlandi"
+                        est = st.selectbox("Durum", STATUS_OPTIONS,
+                                           index=STATUS_OPTIONS.index(safe_status), key=f"est_{vid}")
+                        en  = st.text_area("Yapılan Teknik İşlem", value=v.get("work_notes",""), height=80, key=f"en_{vid}")
+                        sb,db_b = st.columns(2)
+                        with sb:  save = st.form_submit_button("💾 Kaydet", type="primary", use_container_width=True)
+                        with db_b: dlt = st.form_submit_button("🗑️ Sil", use_container_width=True)
+                    if save:
+                        db.update_visit(vid, ed.strftime("%Y-%m-%d"), ec2, ect, es, en, edu, et, est)
+                        invalidate_caches(); st.success("✅ Güncellendi!"); st.rerun()
+                    if dlt:
+                        db.delete_visit(vid); invalidate_caches()
+                        st.warning(f"🗑️ #{vid} silindi."); st.rerun()
+                st.markdown("---")
 
 
 # ─────────────────────────────────────────────

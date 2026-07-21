@@ -32,6 +32,7 @@ class Visit {
   final String workNotes;
   final String? createdAt;
   final bool synced;
+  final String? imageData;
 
   Visit({
     this.id,
@@ -44,6 +45,7 @@ class Visit {
     required this.workNotes,
     this.createdAt,
     this.synced = false,
+    this.imageData,
   });
 
   Map<String, dynamic> toMap() {
@@ -58,6 +60,7 @@ class Visit {
       'work_notes': workNotes,
       'created_at': createdAt ?? DateTime.now().toIso8601String(),
       'synced': synced ? 1 : 0,
+      'image_data': imageData,
     };
   }
 
@@ -73,6 +76,7 @@ class Visit {
       workNotes: (map['work_notes'] ?? map['notes'] ?? '').toString(),
       createdAt: map['created_at']?.toString(),
       synced: _parseBool(map['synced']),
+      imageData: map['image_data']?.toString(),
     );
   }
 
@@ -90,6 +94,7 @@ class CompanyNote {
   final String? otherNotes;
   final String? updatedAt;
   final bool synced;
+  final String? imageData;
 
   CompanyNote({
     this.id,
@@ -100,6 +105,7 @@ class CompanyNote {
     this.otherNotes,
     this.updatedAt,
     this.synced = false,
+    this.imageData,
   });
 
   Map<String, dynamic> toMap() {
@@ -112,6 +118,7 @@ class CompanyNote {
       'other_notes': otherNotes,
       'updated_at': updatedAt ?? DateTime.now().toIso8601String(),
       'synced': synced ? 1 : 0,
+      'image_data': imageData,
     };
   }
 
@@ -125,6 +132,7 @@ class CompanyNote {
       otherNotes: map['other_notes']?.toString(),
       updatedAt: map['updated_at']?.toString(),
       synced: _parseBool(map['synced']),
+      imageData: map['image_data']?.toString(),
     );
   }
 

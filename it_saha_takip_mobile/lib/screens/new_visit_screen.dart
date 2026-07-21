@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
@@ -20,7 +24,11 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
   double _duration = 1.0;
   String _status = 'Tamamlandi';
   List<String> _companySuggestions = [];
+  String? _base64Image;
+  Uint8List? _imageBytes;
   bool _saving = false;
+
+  final _picker = ImagePicker();
 
   final _categories = [
     'Sistem ve Sunucu',
@@ -65,6 +73,63 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
     } catch (_) {}
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? file = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      if (file != null) {
+        final bytes = await file.readAsBytes();
+        final base64Str = base64Encode(bytes);
+        setState(() {
+          _imageBytes = bytes;
+          _base64Image = base64Str;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fotoğraf seçme hatası: $e')),
+        );
+      }
+    }
+  }
+
+  void _showImagePickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Color(0xFF38BDF8)),
+              title: const Text('📷 Kamera İle Fotoğraf Çek', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Color(0xFF38BDF8)),
+              title: const Text('🖼️ Galeriden Fotoğraf Seç', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -99,34 +164,37 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
   void _applyTemplate(String key) {
     final t = _templates[key];
     if (t != null) {
-      _subjectCtrl.text = t['subject']!;
-      _notesCtrl.text = t['notes']!;
-      setState(() {});
+      setState(() {
+        _subjectCtrl.text = t['subject'] ?? '';
+        _notesCtrl.text = t['notes'] ?? '';
+      });
     }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
+
     try {
       final visit = Visit(
         visitDate: _formatDateISO(_selectedDate),
         company: _companyCtrl.text.trim(),
-        subject: _subjectCtrl.text.trim().isEmpty ? 'Genel Destek' : _subjectCtrl.text.trim(),
+        subject: _subjectCtrl.text.trim().isEmpty ? _category : _subjectCtrl.text.trim(),
         technician: _category,
         duration: _duration,
         status: _status,
         workNotes: _notesCtrl.text.trim(),
         synced: false,
+        imageData: _base64Image,
       );
       await DatabaseService.insertVisit(visit);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✅ Kayıt eklendi! Eşitleme sekmesinden PC\'ye gönderin.'),
+          content: Text('✅ Kayıt eklendi! Eşitleniyor...'),
           backgroundColor: Color(0xFF059669),
-          duration: Duration(seconds: 3),
+          duration: Duration(seconds: 2),
         ),
       );
       _companyCtrl.clear();
@@ -135,19 +203,19 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
       setState(() {
         _selectedDate = DateTime.now();
         _duration = 1.0;
+        _base64Image = null;
+        _imageBytes = null;
         _saving = false;
       });
 
-      // Auto-sync in background
+      // Reload companies list & auto-sync
+      _loadCompanies();
       SyncService.fullSync();
     } catch (e) {
       if (mounted) {
         setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -217,17 +285,45 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Company
+            // Company Input + Quick Selector Chips
             _buildSectionTitle('🏢 FİRMA / KURUM ADI *'),
             const SizedBox(height: 6),
             TextFormField(
               controller: _companyCtrl,
               decoration: const InputDecoration(
-                hintText: 'Firma adını girin (Örn: ABC A.Ş.)...',
+                hintText: 'Firma adını girin veya aşağıdan seçin...',
                 prefixIcon: Icon(Icons.business, color: Color(0xFF64748B)),
               ),
               validator: (v) => v == null || v.trim().isEmpty ? 'Firma adı zorunlu' : null,
             ),
+
+            if (_companySuggestions.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 38,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _companySuggestions.length,
+                  itemBuilder: (ctx, i) {
+                    final comp = _companySuggestions[i];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: ActionChip(
+                        avatar: const Icon(Icons.apartment, size: 14, color: Color(0xFF38BDF8)),
+                        label: Text(comp, style: const TextStyle(fontSize: 12, color: Colors.white)),
+                        backgroundColor: const Color(0xFF1E293B),
+                        side: const BorderSide(color: Color(0xFF334155)),
+                        onPressed: () {
+                          setState(() {
+                            _companyCtrl.text = comp;
+                          });
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
 
             // Subject
@@ -284,7 +380,7 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionTitle('✅ DURUM'),
+                      _buildSectionTitle('📊 DURUM'),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
                         value: _status,
@@ -306,32 +402,82 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
             const SizedBox(height: 16),
 
             // Notes
-            _buildSectionTitle('📝 TEKNİK NOTLAR *'),
+            _buildSectionTitle('📝 ÇALIŞMA DETAYLARI VE NOTLAR'),
             const SizedBox(height: 6),
             TextFormField(
               controller: _notesCtrl,
-              maxLines: 5,
+              maxLines: 4,
               decoration: const InputDecoration(
-                hintText: 'Yapılan teknik işlemleri detaylıca yazın...',
-                alignLabelWithHint: true,
+                hintText: 'Yapılan işlemleri detaylıca yazın...',
               ),
-              validator: (v) => v == null || v.trim().isEmpty ? 'Notlar zorunlu' : null,
             ),
+            const SizedBox(height: 16),
+
+            // Photo Attachment Section
+            _buildSectionTitle('📷 FOTOĞRAF / GÖRSEL EKLE (OPSİYONEL)'),
+            const SizedBox(height: 8),
+            if (_imageBytes == null)
+              OutlinedButton.icon(
+                onPressed: _showImagePickerOptions,
+                icon: const Icon(Icons.add_a_photo, color: Color(0xFF38BDF8)),
+                label: const Text('Fotoğraf Çek / Görsel Seç', style: TextStyle(color: Color(0xFF38BDF8))),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Color(0xFF38BDF8)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              )
+            else
+              Stack(
+                alignment: Alignment.topRight,
+                children: [
+                  Container(
+                    height: 160,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFF38BDF8), width: 2),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.memory(_imageBytes!, fit: BoxFit.cover),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: CircleAvatar(
+                      backgroundColor: Colors.black85,
+                      radius: 18,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.red, size: 18),
+                        onPressed: () => setState(() {
+                          _imageBytes = null;
+                          _base64Image = null;
+                        }),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
             const SizedBox(height: 24),
 
+            // Submit Button
             SizedBox(
-              width: double.infinity,
+              height: 52,
               child: ElevatedButton.icon(
                 onPressed: _saving ? null : _save,
                 icon: _saving
                     ? const SizedBox(
-                        width: 18, height: 18,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.save),
-                label: Text(_saving ? 'Kaydediliyor...' : '💾 Kaydı Ekle'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save, size: 22),
+                label: Text(
+                  _saving ? 'Kaydediliyor...' : '💾 SAHA KAYDINI KAYDET',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -342,11 +488,11 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
     );
   }
 
-  Widget _buildSectionTitle(String text) {
+  Widget _buildSectionTitle(String title) {
     return Text(
-      text,
+      title,
       style: const TextStyle(
-        fontSize: 11.5,
+        fontSize: 12,
         fontWeight: FontWeight.w700,
         color: Color(0xFF94A3B8),
         letterSpacing: 0.5,
