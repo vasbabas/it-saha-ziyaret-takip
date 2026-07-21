@@ -1872,29 +1872,27 @@ def main():
             apk_qr_img = f"<img src='data:image/png;base64,{qr_info['apk_qr']}' style='width:90px; border-radius:6px; background:#fff; padding:3px;'>" if qr_info['apk_qr'] else ""
             tunnel_qr_img = f"<img src='data:image/png;base64,{qr_info['tunnel_qr']}' style='width:90px; border-radius:6px; background:#fff; padding:3px;'>" if qr_info['tunnel_qr'] else ""
 
-            st.markdown(f"""
-            <div style='background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; margin-top:12px;'>
-                <span style='font-size:10px; color:#38BDF8; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;'>📱 MOBİL ERİŞİM & İNDİRME</span>
-                
-                <!-- Android APK -->
-                <div style='margin-top:10px; padding:8px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); border-radius:8px; text-align:center;'>
-                    <div style='font-size:11px; font-weight:700; color:#34D399;'>🤖 Android Uygulaması (.APK)</div>
-                    <div style='margin:4px 0;'>{apk_qr_img}</div>
-                    <a href='{qr_info["apk_url"]}' target='_blank' style='font-size:10px; color:#60A5FA; text-decoration:none; word-break:break-all;'>İndirmek İçin Dokunun</a>
-                </div>
+            iphone_html = f"<div style='margin:4px 0;'>{tunnel_qr_img}</div><div style='font-size:9.5px; color:#94A3B8;'>Safari ile taratıp Ana Ekrana Ekle'ye basın</div>" if qr_info['tunnel_url'] else "<div style='font-size:9.5px; color:#94A3B8; margin-top:3px;'>cloudflared aktifleştiğinde HTTPS URL burada görünür</div>"
 
-                <!-- iPhone / Safari HTTPS -->
-                <div style='margin-top:8px; padding:8px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.2); border-radius:8px; text-align:center;'>
-                    <div style='font-size:11px; font-weight:700; color:#60A5FA;'>🍎 iPhone (Safari HTTPS PWA)</div>
-                    {'<div style="margin:4px 0;">' + tunnel_qr_img + '</div><div style="font-size:9.5px; color:#94A3B8;">Safari ile taratıp Ana Ekrana Ekle\'ye basın</div>' if qr_info['tunnel_url'] else '<div style="font-size:9.5px; color:#94A3B8; margin-top:3px;">tunnel_runner.py çalıştırıldığında HTTPS URL aktif olur</div>'}
-                </div>
+            st.markdown(
+                f"<div style='background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; margin-top:12px;'>"
+                f"<span style='font-size:10px; color:#38BDF8; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;'>📱 MOBİL ERİŞİM & İNDİRME</span>"
+                f"<div style='margin-top:10px; padding:8px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); border-radius:8px; text-align:center;'>"
+                f"<div style='font-size:11px; font-weight:700; color:#34D399;'>🤖 Android Uygulaması (.APK)</div>"
+                f"<div style='margin:4px 0;'>{apk_qr_img}</div>"
+                f"<a href='{qr_info['apk_url']}' target='_blank' style='font-size:10px; color:#60A5FA; text-decoration:none; word-break:break-all;'>İndirmek İçin Dokunun</a>"
+                f"</div>"
+                f"<div style='margin-top:8px; padding:8px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.2); border-radius:8px; text-align:center;'>"
+                f"<div style='font-size:11px; font-weight:700; color:#60A5FA;'>🍎 iPhone (Safari HTTPS PWA)</div>"
+                f"{iphone_html}"
+                f"</div>"
+                f"<div style='margin-top:8px; font-size:10px; color:#94A3B8; text-align:center;'>"
+                f"<b>Yerel IP:</b> <span style='color:#F8FAFC;'>{qr_info['local_ip']}</span>"
+                f"</div>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
 
-                <!-- Yerel Wi-Fi -->
-                <div style='margin-top:8px; font-size:10px; color:#94A3B8; text-align:center;'>
-                    <b>Yerel IP:</b> <span style='color:#F8FAFC;'>{qr_info["local_ip"]}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
 
             
         with col_content:
