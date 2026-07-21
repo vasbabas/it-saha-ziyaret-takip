@@ -16,7 +16,7 @@ class DatabaseService {
     final path = join(dbPath, 'it_saha_takip.db');
     return await openDatabase(
       path,
-      version: 3,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE visits (
@@ -29,7 +29,8 @@ class DatabaseService {
             status TEXT DEFAULT 'Tamamlandi',
             work_notes TEXT,
             created_at TEXT,
-            synced INTEGER DEFAULT 0
+            synced INTEGER DEFAULT 0,
+            image_data TEXT
           )
         ''');
         await db.execute('''
@@ -41,7 +42,8 @@ class DatabaseService {
             credentials TEXT,
             other_notes TEXT,
             updated_at TEXT,
-            synced INTEGER DEFAULT 0
+            synced INTEGER DEFAULT 0,
+            image_data TEXT
           )
         ''');
         await db.execute('''
@@ -63,22 +65,45 @@ class DatabaseService {
         ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          try {
-            await db.execute('ALTER TABLE company_notes ADD COLUMN synced INTEGER DEFAULT 0');
-          } catch (_) {}
-        }
-        if (oldVersion < 3) {
-          try {
-            await db.execute('''
-              CREATE TABLE IF NOT EXISTS deleted_items (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                item_type TEXT NOT NULL,
-                item_id TEXT NOT NULL
-              )
-            ''');
-          } catch (_) {}
-        }
+        try {
+          await db.execute('ALTER TABLE visits ADD COLUMN image_data TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE company_notes ADD COLUMN image_data TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE company_notes ADD COLUMN synced INTEGER DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS deleted_items (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              item_type TEXT NOT NULL,
+              item_id TEXT NOT NULL
+            )
+          ''');
+        } catch (_) {}
+      },
+      onOpen: (db) async {
+        // Migration safety checks on every open
+        try {
+          await db.execute('ALTER TABLE visits ADD COLUMN image_data TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE company_notes ADD COLUMN image_data TEXT');
+        } catch (_) {}
+        try {
+          await db.execute('ALTER TABLE company_notes ADD COLUMN synced INTEGER DEFAULT 0');
+        } catch (_) {}
+        try {
+          await db.execute('''
+            CREATE TABLE IF NOT EXISTS deleted_items (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              item_type TEXT NOT NULL,
+              item_id TEXT NOT NULL
+            )
+          ''');
+        } catch (_) {}
       },
     );
   }
