@@ -169,6 +169,8 @@ class DatabaseService {
     });
   }
 
+  static Future<void> upsertVisitsFromSync(List<Visit> visits) async => syncReplaceVisits(visits);
+
   static Future<List<Visit>> getUnsyncedVisits() async {
     final db = await database;
     final maps = await db.query('visits', where: 'synced = 0');

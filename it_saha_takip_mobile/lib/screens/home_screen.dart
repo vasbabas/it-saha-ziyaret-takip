@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import '../services/sync_service.dart';
 import 'new_visit_screen.dart';
 import 'records_screen.dart';
 import 'inventory_screen.dart';
@@ -15,6 +17,25 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   int _refreshCounter = 0;
+  Timer? _autoSyncTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Initial silent sync on app open
+    SyncService.fullSync();
+
+    // Periodic silent auto-sync every 30 seconds
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      SyncService.fullSync();
+    });
+  }
+
+  @override
+  void dispose() {
+    _autoSyncTimer?.cancel();
+    super.dispose();
+  }
 
   Widget _buildScreen(int index) {
     switch (index) {
