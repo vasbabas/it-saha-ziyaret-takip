@@ -2,85 +2,323 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>IT Saha Takip Mobil</title>
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#1e3a8a">
+  <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="IT Saha Takip">
+  
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; -webkit-tap-highlight-color: transparent; }
-    body { background-color: #0f172a; color: #f8fafc; padding-bottom: 75px; min-height: 100vh; font-size: 14px; }
-    
-    /* Header & Banner */
-    .app-header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 14px 16px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); position: sticky; top: 0; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-    .app-header h1 { font-size: 16px; font-weight: 700; color: #fff; }
-    .sync-badge { font-size: 10.5px; font-weight: 600; padding: 3px 8px; border-radius: 12px; display: inline-block; margin-top: 4px; }
-    .sync-online { background: rgba(16,185,129,0.25); color: #34d399; }
-    .sync-offline { background: rgba(245,158,11,0.25); color: #fbbf24; }
+    :root {
+      --bg-primary: #0f172a;
+      --bg-card: #1e293b;
+      --bg-input: #0b1329;
+      --accent: #38bdf8;
+      --accent-blue: #2563eb;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.08);
+      --radius: 16px;
+    }
 
-    /* Layout */
-    .container { padding: 14px; max-width: 600px; margin: 0 auto; }
-    .card { background: #1e293b; border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    .card-title { font-size: 14.5px; font-weight: 600; color: #60a5fa; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
-    
-    label { display: block; font-size: 11.5px; color: #94a3b8; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
-    input, select, textarea { width: 100%; background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; color: #fff; font-size: 14px; margin-bottom: 12px; outline: none; }
-    input:focus, select:focus, textarea:focus { border-color: #3b82f6; }
-    
-    .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 13px; border-radius: 10px; font-size: 14px; font-weight: 600; border: none; cursor: pointer; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: calc(75px + env(safe-area-inset-bottom));
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* iOS Header */
+    .app-header {
+      background: rgba(30, 41, 59, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      padding: 14px 18px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .app-header h1 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sync-status {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .status-online { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-offline { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+    /* iPhone PWA Installation Prompt Banner */
+    .ios-install-banner {
+      background: linear-gradient(135deg, rgba(37, 99, 235, 0.2), rgba(56, 189, 248, 0.1));
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin: 14px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .ios-install-banner .text {
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+
+    .ios-install-banner .close-btn {
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    /* Container & Cards */
+    .container {
+      padding: 14px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Forms & Inputs */
+    label {
+      display: block;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: #fff;
+      font-size: 14px;
+      margin-bottom: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+
     .btn-primary { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; }
-    .btn-secondary { background: #334155; color: #f8fafc; }
     .btn-success { background: linear-gradient(135deg, #059669, #10b981); color: #fff; }
-    .btn:active { opacity: 0.8; }
-    
-    /* Bottom Navigation Bar */
-    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-around; padding: 8px 0; z-index: 1000; box-shadow: 0 -4px 15px rgba(0,0,0,0.4); }
-    .nav-item { display: flex; flex-direction: column; align-items: center; color: #64748b; font-size: 10px; text-decoration: none; font-weight: 500; width: 20%; }
-    .nav-item .icon { font-size: 17px; margin-bottom: 2px; }
-    .nav-item.active { color: #3b82f6; font-weight: 700; }
+    .btn-secondary { background: #334155; color: #f8fafc; }
+    .btn-outline { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
+    .btn:active { transform: scale(0.98); opacity: 0.9; }
 
-    /* Tabs */
+    /* Templates chips */
+    .templates-scroll {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+      scrollbar-width: none;
+    }
+
+    .templates-scroll::-webkit-scrollbar { display: none; }
+
+    .chip {
+      white-space: nowrap;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent);
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Items Lists */
+    .record-item {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 10px;
+    }
+
+    .record-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .company-name { font-size: 15px; font-weight: 700; color: var(--accent); }
+    .badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 12px; }
+    .badge-done { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+    .badge-progress { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+
+    .cred-box {
+      background: #070d19;
+      border: 1px dashed rgba(255,255,255,0.15);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 8px;
+    }
+
+    /* Bottom Navigation Bar */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(30, 41, 59, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      padding: 10px 0 calc(10px + env(safe-area-inset-bottom));
+      z-index: 1000;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--text-muted);
+      font-size: 10px;
+      text-decoration: none;
+      font-weight: 600;
+      width: 20%;
+    }
+
+    .nav-item .icon { font-size: 20px; margin-bottom: 2px; }
+    .nav-item.active { color: var(--accent); }
+
     .tab-content { display: none; }
     .tab-content.active { display: block; }
-    .item-box { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 12px; margin-top: 8px; }
+
+    .search-box {
+      position: relative;
+      margin-bottom: 14px;
+    }
   </style>
 </head>
 <body>
 
   <!-- Header -->
   <div class="app-header">
-    <h1>📱 IT Saha Takip Mobil</h1>
-    <div id="syncBadge" class="sync-badge sync-offline">🟠 Bilgisayarla Eşitlenecek</div>
+    <h1>📱 IT Saha Takip</h1>
+    <div id="syncStatus" class="sync-status status-offline">
+      <span id="statusDot">🟠</span> <span id="statusText">Cevrimdisi</span>
+    </div>
+  </div>
+
+  <!-- iPhone PWA Installation Helper -->
+  <div id="iosInstallBanner" class="ios-install-banner">
+    <div class="text">
+      <b>💡 iPhone'a Uygulama Olarak Ekleyin:</b><br>
+      Safari'de <b>Paylas (Share)</b> butonuna basip <b>"Ana Ekrana Ekle"</b> secin.
+    </div>
+    <button class="close-btn" onclick="closeIosBanner()">✕</button>
   </div>
 
   <div class="container">
-    
-    <!-- TAB 1: YENİ BT KAYDI -->
+
+    <!-- TAB 1: YENİ KAYIT -->
     <div id="tab-new" class="tab-content active">
       <div class="card">
-        <div class="card-title">⚡ Hızlı Not Şablonu Yükle</div>
-        <select id="tplSelect" onchange="applyTemplate()">
-          <option value="">-- Şablon Seçin --</option>
-          <option value="sunucu">🖥️ Sunucu Rutin Bakımı</option>
-          <option value="firewall">🔥 Firewall & Ağ Kuralı</option>
-          <option value="pc">💻 Kullanıcı PC Kurulumu</option>
-          <option value="yedek">💾 Yedekleme & Disk Kontrolü</option>
-        </select>
+        <div class="card-title">⚡ Hizli Sablonlar</div>
+        <div class="templates-scroll">
+          <div class="chip" onclick="applyTpl('sunucu')">🖥️ Sunucu Bakimi</div>
+          <div class="chip" onclick="applyTpl('firewall')">🔥 Firewall</div>
+          <div class="chip" onclick="applyTpl('pc')">💻 PC Kurulumu</div>
+          <div class="chip" onclick="applyTpl('yedek')">💾 Yedek Kontrolü</div>
+        </div>
       </div>
 
       <div class="card">
-        <div class="card-title">➕ Yeni Saha Ziyaret Kaydı</div>
-        
+        <div class="card-title">➕ Yeni Saha Ziyaret Kaydi</div>
+
         <label>Tarih</label>
         <input type="date" id="vDate">
-        
+
         <label>Firma / Kurum Adı *</label>
-        <input type="text" id="vCompany" placeholder="Firma Adı (Örn: ABC A.Ş.)" list="companyDatalist">
-        <datalist id="companyDatalist"></datalist>
-        
+        <input type="text" id="vCompany" placeholder="Firma Adı (Örn: ABC A.Ş.)">
+
         <label>Çalışma Konusu</label>
-        <input type="text" id="vSubject" placeholder="Örn: Sunucu Bakımı">
+        <input type="text" id="vSubject" placeholder="Örn: Sunucu Bakımı ve Güncelleme">
 
         <label>Kategori</label>
         <select id="vCategory">
@@ -91,37 +329,49 @@
           <option value="Yedekleme ve Güvenlik">Yedekleme ve Güvenlik</option>
         </select>
 
-        <label>Harcanan Süre (Saat)</label>
-        <input type="number" id="vDuration" value="1.0" step="0.5">
-
-        <label>Durum</label>
-        <select id="vStatus">
-          <option value="Tamamlandi">✅ Tamamlandı</option>
-          <option value="Devam Ediyor">⏳ Devam Ediyor</option>
-        </select>
+        <div style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label>Süre (Saat)</label>
+            <select id="vDuration">
+              <option value="0.5">0.5 saat</option>
+              <option value="1.0" selected>1.0 saat</option>
+              <option value="1.5">1.5 saat</option>
+              <option value="2.0">2.0 saat</option>
+              <option value="3.0">3.0 saat</option>
+              <option value="4.0">4.0 saat</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <label>Durum</label>
+            <select id="vStatus">
+              <option value="Tamamlandi">✅ Tamamlandı</option>
+              <option value="Devam Ediyor">⏳ Devam Ediyor</option>
+            </select>
+          </div>
+        </div>
 
         <label>Teknik Notlar *</label>
-        <textarea id="vNotes" rows="4" placeholder="Yapılan teknik detaylar..."></textarea>
+        <textarea id="vNotes" rows="4" placeholder="Yapılan işlemleri detaylıca yazın..."></textarea>
 
-        <button class="btn btn-primary" onclick="saveVisit()">💾 Kaydı Mobil Hafızaya Ekle</button>
+        <button class="btn btn-primary" onclick="saveVisit()">💾 Kaydı Ekle (Çevrimdışı Saklanır)</button>
       </div>
     </div>
 
-    <!-- TAB 2: ENVANTER / ŞİFRELER -->
-    <div id="tab-inventory" class="tab-content">
-      <div class="card">
-        <div class="card-title">🔑 BT Envanter & Şifre Notları</div>
-        <input type="text" id="invSearch" placeholder="Firma veya IP Ara..." onkeyup="renderInventory()">
-        <div id="inventoryList"></div>
-      </div>
-    </div>
-
-    <!-- TAB 3: GÜNLÜKLER (ZİYARET GEÇMİŞİ) -->
+    <!-- TAB 2: GÜNLÜKLER -->
     <div id="tab-records" class="tab-content">
       <div class="card">
-        <div class="card-title">🗂️ Tüm Ziyaret Kayıtları</div>
-        <input type="text" id="recordSearch" placeholder="Kayıtlarda Ara..." onkeyup="renderRecords()">
-        <div id="recordsList"></div>
+        <div class="card-title">🗂️ Ziyaret Günlüğü Kayıtları</div>
+        <input type="text" id="recSearch" placeholder="Kayıtlarda ara..." onkeyup="renderRecords()">
+        <div id="recordsContainer"></div>
+      </div>
+    </div>
+
+    <!-- TAB 3: ENVANTER -->
+    <div id="tab-inventory" class="tab-content">
+      <div class="card">
+        <div class="card-title">🔑 BT Envanter & Şifre Defteri</div>
+        <input type="text" id="invSearch" placeholder="Firma veya IP Ara..." onkeyup="renderInventory()">
+        <div id="inventoryContainer"></div>
       </div>
     </div>
 
@@ -129,33 +379,36 @@
     <div id="tab-todos" class="tab-content">
       <div class="card">
         <div class="card-title">📋 Yapılacaklar & Görevler</div>
-        <input type="text" id="todoTitle" placeholder="Yeni Görev Ekle...">
-        <button class="btn btn-secondary" style="margin-bottom:12px;" onclick="addTodo()">+ Görev Ekle</button>
-        <div id="todoList"></div>
+        <input type="text" id="todoInput" placeholder="Yeni Görev Ekle...">
+        <button class="btn btn-secondary" style="margin-bottom: 14px;" onclick="addTodo()">+ Görev Ekle</button>
+        <div id="todosContainer"></div>
       </div>
     </div>
 
-    <!-- TAB 5: EŞİTLEME (SYNC) -->
+    <!-- TAB 5: EŞİTLEME -->
     <div id="tab-sync" class="tab-content">
       <div class="card">
-        <div class="card-title">🔄 Bilgisayarla Otomatik Eşitle</div>
-        <p style="font-size:12.5px; color:#94a3b8; margin-bottom:14px; line-height:1.5;">
-          Aynı Wi-Fi ağındayken aşağıdaki butona dokunarak bilgisayardan <b>güncel verileri çekebilir</b> ve telefonda aldığınız <b>yeni kayıtları bilgisayara aktarabilirsiniz</b>.
+        <div class="card-title">🔄 Bilgisayarla Eşitleme (Sync)</div>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Telefonunuzda aldığınız notları bilgisayara aktarabilir ve bilgisayardaki tüm geçmiş kayıtları telefona indirebilirsiniz.
         </p>
 
-        <button class="btn btn-success" style="margin-bottom:12px;" onclick="syncWithPC()">🚀 Bilgisayarla Şimdi Eşitle</button>
-        <button class="btn btn-secondary" onclick="exportMobileData()">📤 Yedek Paketi İndir (.json)</button>
+        <label>Bilgisayar IP Adresi</label>
+        <input type="text" id="pcIpInput" placeholder="Örn: 192.168.1.100">
+
+        <button class="btn btn-success" style="margin-bottom: 10px;" onclick="syncData()">🚀 Bilgisayarla Şimdi Eşitle</button>
+        <div id="syncResult" style="font-size:12.5px; margin-top:10px;"></div>
       </div>
 
       <div class="card">
-        <div class="card-title">📊 Yerel Mobil İstatistikler</div>
-        <div style="font-size:13px; color:#cbd5e1; line-height:1.6;" id="statSummary">Yükleniyor...</div>
+        <div class="card-title">📊 Telefondaki Veri Özeti</div>
+        <div id="statBox" style="font-size: 13px; color: #cbd5e1; line-height: 1.8;"></div>
       </div>
     </div>
 
   </div>
 
-  <!-- Bottom Navigation Bar -->
+  <!-- Bottom Navigation -->
   <div class="bottom-nav">
     <a href="#" class="nav-item active" onclick="switchTab('new', this)">
       <span class="icon">➕</span>
@@ -179,287 +432,242 @@
     </a>
   </div>
 
-  <!-- JavaScript Engine -->
   <script>
+    // Set todays date
     document.getElementById('vDate').valueAsDate = new Date();
-    const HOST_IP = window.location.hostname;
-    const API_BASE = `http://${HOST_IP}:8502`;
 
-    // Pure dynamic storage, NO hardcoded dummy sample data!
-    let mobileData = JSON.parse(localStorage.getItem('it_mobile_db')) || {
+    // Show iOS install guide if Safari on iPhone and not installed
+    const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+    if (isIos && !isStandalone) {
+      document.getElementById('iosInstallBanner').style.display = 'flex';
+    }
+
+    function closeIosBanner() {
+      document.getElementById('iosInstallBanner').style.display = 'none';
+    }
+
+    // LocalStorage Database
+    let db = JSON.parse(localStorage.getItem('it_saha_db')) || {
       visits: [],
-      inventory: [],
-      todos: []
+      company_notes: [],
+      todos: [],
+      pc_ip: window.location.hostname
     };
 
+    document.getElementById('pcIpInput').value = db.pc_ip || window.location.hostname;
+
     function saveDB() {
-      localStorage.setItem('it_mobile_db', JSON.stringify(mobileData));
-      updateStats();
+      localStorage.setItem('it_saha_db', JSON.stringify(db));
+      renderStats();
     }
 
     function switchTab(tabId, el) {
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      document.getElementById('tab-' + tabId).classList.add('active');
+      document.getElementById(`tab-${tabId}`).classList.add('active');
       el.classList.add('active');
-      
-      if(tabId === 'records') renderRecords();
-      if(tabId === 'inventory') renderInventory();
-      if(tabId === 'todos') renderTodos();
-      if(tabId === 'sync') updateStats();
+
+      if (tabId === 'records') renderRecords();
+      if (tabId === 'inventory') renderInventory();
+      if (tabId === 'todos') renderTodos();
+      if (tabId === 'sync') renderStats();
     }
 
-    function applyTemplate() {
-      const t = document.getElementById('tplSelect').value;
-      const sub = document.getElementById('vSubject');
-      const notes = document.getElementById('vNotes');
-      
-      if(t === 'sunucu') {
-        sub.value = "Sunucu Rutin Bakımı ve Sağlık Kontrolü";
-        notes.value = "— Sunucu diski doluluk oranları kontrol edildi.\n— Windows Update uygulandı.\n— Event Viewer günlükleri incelendi, hata yok.";
-      } else if(t === 'firewall') {
-        sub.value = "Firewall ve VLAN Kural Güncellemesi";
-        notes.value = "— Güvenlik duvarı kuralları güncellendi.\n— VPN erişim izinleri denetlendi.";
-      } else if(t === 'pc') {
-        sub.value = "Kullanıcı Bilgisayarı Format ve Kurulum";
-        notes.value = "— Windows 11 yeniden kuruldu.\n— Domain ve Antivirüs tanımlamaları yapıldı.";
-      } else if(t === 'yedek') {
-        sub.value = "Yedekleme Kontrolü ve Veri Sağlığı";
-        notes.value = "— Veeam/NAS yedekleme günlükleri incelendi.\n— Test restore işlemi yapıldı.";
+    // Templates
+    const templates = {
+      sunucu: { subject: 'Sunucu Rutin Bakımı ve Sağlık Kontrolü', notes: '— Sunucu disk doluluk oranları denetlendi.\n— Event Viewer günlükleri incelendi.\n— Windows Update uygulandı.' },
+      firewall: { subject: 'Firewall & Network Güncellemesi', notes: '— Güvenlik duvarı kuralları güncellendi.\n— VPN erişimleri kontrol edildi.' },
+      pc: { subject: 'Kullanıcı PC Format ve Kurulum', notes: '— Windows 11 yeniden yüklendi.\n— Domain ve Antivirüs tanımlandı.' },
+      yedek: { subject: 'Yedekleme Kontrolü', notes: '— Veeam/NAS yedek günlükleri incelendi.\n— Test geri yükleme başarılı.' }
+    };
+
+    function applyTpl(key) {
+      const t = templates[key];
+      if (t) {
+        document.getElementById('vSubject').value = t.subject;
+        document.getElementById('vNotes').value = t.notes;
       }
     }
 
+    // Save visit
     function saveVisit() {
-      const comp = document.getElementById('vCompany').value.trim();
+      const company = document.getElementById('vCompany').value.trim();
       const notes = document.getElementById('vNotes').value.trim();
-      if(!comp || !notes) {
-        alert('Lütfen Firma Adı ve Teknik Notlar alanlarını doldurun!');
+
+      if (!company || !notes) {
+        alert('Lütfen Firma Adı ve Notlar alanını doldurun.');
         return;
       }
 
-      const rec = {
+      const newVisit = {
         id: Date.now(),
         visit_date: document.getElementById('vDate').value,
-        company: comp,
+        company: company,
         subject: document.getElementById('vSubject').value.trim() || 'Genel Destek',
         technician: document.getElementById('vCategory').value,
-        duration: parseFloat(document.getElementById('vDuration').value) || 1.0,
+        duration: parseFloat(document.getElementById('vDuration').value),
         status: document.getElementById('vStatus').value,
         work_notes: notes,
-        created_at: new Date().toISOString()
+        synced: false
       };
 
-      mobileData.visits.unshift(rec);
+      db.visits.unshift(newVisit);
       saveDB();
 
-      alert('✅ Ziyaret kaydı telefona eklendi!');
+      alert('✅ Kayıt telefona kaydedildi!');
       document.getElementById('vCompany').value = '';
-      document.getElementById('vNotes').value = '';
       document.getElementById('vSubject').value = '';
-      
-      // Auto-sync if connected to PC API
-      syncWithPC(true);
+      document.getElementById('vNotes').value = '';
     }
 
+    // Render Records
     function renderRecords() {
-      const container = document.getElementById('recordsList');
-      const query = document.getElementById('recordSearch').value.toLowerCase();
-      container.innerHTML = '';
-
-      const filtered = mobileData.visits.filter(v => 
-        v.company.toLowerCase().includes(query) || (v.subject && v.subject.toLowerCase().includes(query)) || (v.work_notes && v.work_notes.toLowerCase().includes(query))
+      const q = document.getElementById('recSearch').value.toLowerCase();
+      const container = document.getElementById('recordsContainer');
+      const filtered = db.visits.filter(v => 
+        (v.company && v.company.toLowerCase().includes(q)) ||
+        (v.subject && v.subject.toLowerCase().includes(q)) ||
+        (v.work_notes && v.work_notes.toLowerCase().includes(q))
       );
 
-      if(filtered.length === 0) {
-        container.innerHTML = '<p style="color:#64748b; font-size:12px; text-align:center; padding:15px;">Henüz kayıt bulunmuyor.</p>';
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:20px;">Kayıt bulunamadı.</div>';
         return;
       }
 
-      filtered.forEach(v => {
-        const div = document.createElement('div');
-        div.className = 'item-box';
-        const isCompleted = v.status === 'Tamamlandi';
-        div.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="font-weight:700; color:#38bdf8;">🏢 ${v.company}</span>
-            <span style="font-size:10px; font-weight:700; padding:2px 6px; border-radius:10px; background:${isCompleted ? 'rgba(16,185,129,0.2)' : 'rgba(245,158,11,0.2)'}; color:${isCompleted ? '#34d399' : '#fbbf24'};">
-              ${v.status}
-            </span>
+      container.innerHTML = filtered.map(v => `
+        <div class="record-item">
+          <div class="record-header">
+            <span class="company-name">${v.company}</span>
+            <span class="badge ${v.status === 'Tamamlandi' ? 'badge-done' : 'badge-progress'}">${v.status === 'Tamamlandi' ? '✅ Tamamlandı' : '⏳ Devam Ediyor'}</span>
           </div>
-          <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">📅 <b>${v.visit_date}</b> · 📌 ${v.subject || 'Genel Destek'} (${v.duration || 1} saat)</div>
-          <div style="font-size:12px; color:#94a3b8; margin-top:6px; white-space:pre-line;">${v.work_notes}</div>
-        `;
-        container.appendChild(div);
-      });
+          <div style="font-size:12px; color:var(--text-muted); margin-bottom:6px;">
+            📅 ${v.visit_date} · 📌 ${v.subject} · ⏱️ ${v.duration} saat
+          </div>
+          <div style="font-size:13px; color:#cbd5e1; white-space:pre-wrap;">${v.work_notes}</div>
+        </div>
+      `).join('');
     }
 
+    // Render Inventory
     function renderInventory() {
-      const container = document.getElementById('inventoryList');
-      const query = document.getElementById('invSearch').value.toLowerCase();
-      container.innerHTML = '';
-
-      const filtered = mobileData.inventory.filter(i => 
-        (i.company && i.company.toLowerCase().includes(query)) || (i.ip_subnet && i.ip_subnet.includes(query))
+      const q = document.getElementById('invSearch').value.toLowerCase();
+      const container = document.getElementById('inventoryContainer');
+      const filtered = (db.company_notes || []).filter(n =>
+        (n.company && n.company.toLowerCase().includes(q)) ||
+        (n.ip_subnet && n.ip_subnet.toLowerCase().includes(q))
       );
 
-      if(filtered.length === 0) {
-        container.innerHTML = '<p style="color:#64748b; font-size:12px; text-align:center; padding:15px;">Envanter notu bulunmuyor.</p>';
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:20px;">Envanter kaydı bulunamadı (PC ile eşitleyin).</div>';
         return;
       }
 
-      filtered.forEach((item, index) => {
-        const div = document.createElement('div');
-        div.className = 'item-box';
-        div.innerHTML = `
-          <div style="font-weight:700; color:#38bdf8;">🏢 ${item.company}</div>
-          <div style="font-size:12px; color:#cbd5e1; margin-top:4px;">🌐 IP Subnet: <b>${item.ip_subnet || '-'}</b></div>
-          <div style="font-size:12px; color:#cbd5e1;">🔒 VPN: <b>${item.vpn_details || item.vpn || '-'}</b></div>
-          <div style="font-size:12px; color:#fbbf24; margin-top:4px;">🔑 Giriş / Notlar: <span id="pwd_${index}">••••••••</span> 
-            <button onclick="togglePassword(this, ${index})" style="background:none; border:none; color:#38bdf8; font-size:11px; text-decoration:underline; cursor:pointer;">Göster</button>
-          </div>
-        `;
-        container.appendChild(div);
-      });
+      container.innerHTML = filtered.map((n, idx) => `
+        <div class="record-item">
+          <div class="company-name">${n.company}</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">🌐 IP / Subnet: ${n.ip_subnet || '—'}</div>
+          <div style="font-size:12px; color:var(--text-muted);">🔒 VPN: ${n.vpn_details || '—'}</div>
+          ${n.credentials ? `
+            <div class="cred-box">
+              <div style="font-size:11px; color:#fbbf24; font-weight:700;">🔑 Giriş Bilgileri</div>
+              <div id="cred-${idx}" style="font-size:13px; color:#94a3b8; font-family:monospace; margin:4px 0;">••••••••••••</div>
+              <button class="btn btn-outline" style="padding:6px 12px; font-size:11px; width:auto;" onclick="toggleCred(${idx}, '${n.credentials.replace(/'/g, "\\'")}')">Göster / Kopyala</button>
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
     }
 
-    function togglePassword(btn, index) {
-      const span = document.getElementById('pwd_' + index);
-      const item = mobileData.inventory[index];
-      const text = item.credentials || item.other_notes || 'Bilgi yok';
-      if(span.innerText === '••••••••') {
-        span.innerText = text;
-        btn.innerText = 'Gizle';
+    function toggleCred(idx, val) {
+      const el = document.getElementById(`cred-${idx}`);
+      if (el.innerText === '••••••••••••') {
+        el.innerText = val;
+        navigator.clipboard.writeText(val);
+        alert('📋 Şifre panoya kopyalandı!');
       } else {
-        span.innerText = '••••••••';
-        btn.innerText = 'Göster';
+        el.innerText = '••••••••••••';
       }
+    }
+
+    // Render Todos
+    function addTodo() {
+      const title = document.getElementById('todoInput').value.trim();
+      if (!title) return;
+      db.todos.unshift({ id: Date.now(), title: title, is_done: 0 });
+      document.getElementById('todoInput').value = '';
+      saveDB();
+      renderTodos();
     }
 
     function renderTodos() {
-      const container = document.getElementById('todoList');
-      container.innerHTML = '';
-
-      if(mobileData.todos.length === 0) {
-        container.innerHTML = '<p style="color:#64748b; font-size:12px; text-align:center; padding:15px;">Görev bulunmuyor.</p>';
+      const container = document.getElementById('todosContainer');
+      if (db.todos.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-muted); text-align:center; padding:20px;">Görev yok.</div>';
         return;
       }
-
-      mobileData.todos.forEach((t, index) => {
-        const div = document.createElement('div');
-        div.className = 'item-box';
-        div.style.cssText = "display:flex; align-items:center; justify-content:space-between;";
-        const isDone = t.is_done || t.done;
-        const title = t.title || t.description || 'Görev';
-        div.innerHTML = `
-          <span style="font-size:13px; ${isDone ? 'text-decoration:line-through; color:#64748b;' : 'color:#f8fafc;'}">${title}</span>
-          <button onclick="toggleTodo(${index})" style="background:${isDone ? '#059669' : '#334155'}; border:none; color:#fff; border-radius:6px; padding:4px 8px; font-size:11px;">
-            ${isDone ? '✓ Tamamlandı' : 'Tamamla'}
-          </button>
-        `;
-        container.appendChild(div);
-      });
+      container.innerHTML = db.todos.map((t, i) => `
+        <div class="record-item" style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="${t.is_done ? 'text-decoration:line-through; color:var(--text-muted);' : ''}">${t.title}</span>
+          <input type="checkbox" ${t.is_done ? 'checked' : ''} style="width:20px; height:20px; margin:0;" onchange="toggleTodo(${i})">
+        </div>
+      `).join('');
     }
 
-    function addTodo() {
-      const title = document.getElementById('todoTitle').value.trim();
-      if(!title) return;
-      mobileData.todos.push({ title: title, is_done: false });
-      document.getElementById('todoTitle').value = '';
+    function toggleTodo(i) {
+      db.todos[i].is_done = db.todos[i].is_done ? 0 : 1;
       saveDB();
       renderTodos();
     }
 
-    function toggleTodo(index) {
-      mobileData.todos[index].is_done = !mobileData.todos[index].is_done;
+    // Sync Data
+    async function syncData() {
+      const ip = document.getElementById('pcIpInput').value.trim();
+      db.pc_ip = ip;
       saveDB();
-      renderTodos();
-    }
 
-    function updateStats() {
-      document.getElementById('statSummary').innerHTML = `
-        📊 Toplam Ziyaret Kaydı: <b>${mobileData.visits.length} adet</b><br>
-        🔑 Envanter Notları: <b>${mobileData.inventory.length} firma</b><br>
-        📋 Görevler: <b>${mobileData.todos.length} adet</b>
-      `;
-      
-      // Update Datalist for Company Input
-      const datalist = document.getElementById('companyDatalist');
-      datalist.innerHTML = '';
-      const cos = [...new Set(mobileData.inventory.map(i => i.company).concat(mobileData.visits.map(v => v.company)))];
-      cos.forEach(c => {
-        if(c) {
-          const opt = document.createElement('option');
-          opt.value = c;
-          datalist.appendChild(opt);
-        }
-      });
-    }
+      const resDiv = document.getElementById('syncResult');
+      resDiv.innerHTML = '🔄 Eşitleme başlatılıyor...';
 
-    // 🚀 REST API AUTOMATIC SYNC SYSTEM
-    async function syncWithPC(silent = false) {
-      const badge = document.getElementById('syncBadge');
+      const syncUrl = window.location.protocol === 'https:' 
+        ? `${window.location.origin}/api/sync_data`
+        : `http://${ip}:8502/api/sync_data`;
+
+      const uploadUrl = window.location.protocol === 'https:' 
+        ? `${window.location.origin}/api/sync_upload`
+        : `http://${ip}:8502/api/sync_upload`;
+
       try {
-        // 1. Send mobile queued data to PC
-        const uploadPayload = {
-          version: "3.0",
-          data: {
-            visits: mobileData.visits,
-            company_notes: mobileData.inventory,
-            todos: mobileData.todos
-          }
-        };
+        // Upload unsynced
+        const uploadPayload = JSON.stringify({ version: '3.0', data: db });
+        await fetch(uploadUrl, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: uploadPayload });
 
-        const postRes = await fetch(`${API_BASE}/api/sync_upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(uploadPayload)
-        });
+        // Pull full database
+        const res = await fetch(syncUrl);
+        const json = await res.json();
 
-        // 2. Fetch PC master data back to mobile
-        const getRes = await fetch(`${API_BASE}/api/sync_data`);
-        if(getRes.ok) {
-          const pcData = await getRes.json();
-          if(pcData && pcData.data) {
-            if(pcData.data.visits) mobileData.visits = pcData.data.visits;
-            if(pcData.data.company_notes) mobileData.inventory = pcData.data.company_notes;
-            if(pcData.data.todos) mobileData.todos = pcData.data.todos;
-            saveDB();
-          }
-          badge.className = "sync-badge sync-online";
-          badge.innerText = "🟢 Bilgisayarla Eşitlendi";
-          if(!silent) alert('🎉 Bilgisayarla canlı eşitleme başarıyla tamamlandı!');
+        if (json.data) {
+          db.visits = json.data.visits || [];
+          db.company_notes = json.data.company_notes || [];
+          db.todos = json.data.todos || [];
+          saveDB();
+          resDiv.innerHTML = '<span style="color:#34d399;">✅ Eşitleme başarılı! Tüm veriler güncellendi.</span>';
+          document.getElementById('syncStatus').className = 'sync-status status-online';
+          document.getElementById('statusDot').innerText = '🟢';
+          document.getElementById('statusText').innerText = 'Bagli';
         }
-      } catch(err) {
-        badge.className = "sync-badge sync-offline";
-        badge.innerText = "🟠 Çevrimdışı (Eşitlenecek Kayıtlar Var)";
-        if(!silent) alert('⚠️ Bilgisayara bağlanılamadı. Wi-Fi ağını kontrol edin veya bilgisayardaki uygulamanın açık olduğundan emin olun.');
+      } catch (e) {
+        resDiv.innerHTML = `<span style="color:#fca5a5;">❌ Bağlantı hatası: Bilgisayar açık mı? (${e.message})</span>`;
       }
     }
 
-    function exportMobileData() {
-      const exportObj = { version: "3.0", data: mobileData };
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `IT_Mobil_Yedek_${new Date().toISOString().slice(0,10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-    }
-
-    // Auto sync on startup
-    window.onload = function() {
-      updateStats();
-      syncWithPC(true);
-    };
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/app/static/sw.js', { scope: '/app/static/' })
-          .catch(function() {
-            navigator.serviceWorker.register('/static/sw.js');
-          });
-      });
+    function renderStats() {
+      document.getElementById('statBox').innerHTML = `
+        📁 Total Ziyaret Kaydı: <b>${db.visits.length}</b><br>
+        🔑 Envanter Firmaları: <b>${(db.company_notes || []).length}</b><br>
+        📋 Görevler: <b>${db.todos.length}</b>
+      `;
     }
   </script>
 </body>

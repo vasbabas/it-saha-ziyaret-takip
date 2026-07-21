@@ -1710,12 +1710,26 @@ def tab_backups():
 
 
 def render_mobile_qr_widget():
-    """Mobil cihazlar için yerel ağ IP ve QR kod üretir."""
+    """Mobil cihazlar için yerel ağ IP, Cloudflare HTTPS ve APK QR kodlarını üretir."""
     import socket
     import qrcode
     import io
     import base64
-    
+    import os
+
+    def make_qr_b64(url):
+        if not url: return ""
+        try:
+            qr = qrcode.QRCode(version=1, box_size=3, border=1)
+            qr.add_data(url)
+            qr.make(fit=True)
+            img = qr.make_image(fill_color="#000000", back_color="#ffffff")
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            return base64.b64encode(buf.getvalue()).decode()
+        except Exception:
+            return ""
+
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.settimeout(0.1)
@@ -1724,21 +1738,37 @@ def render_mobile_qr_widget():
         s.close()
     except Exception:
         local_ip = "127.0.0.1"
-        
-    mobile_url = f"http://{local_ip}:8501/app/static/mobile_app.html"
-    
-    try:
-        qr = qrcode.QRCode(version=1, box_size=4, border=1)
-        qr.add_data(mobile_url)
-        qr.make(fit=True)
-        img = qr.make_image(fill_color="#000000", back_color="#ffffff")
-        buffered = io.BytesIO()
-        img.save(buffered, format="PNG")
-        qr_b64 = base64.b64encode(buffered.getvalue()).decode()
-    except Exception:
-        qr_b64 = ""
-        
-    return local_ip, mobile_url, qr_b64
+
+    local_url = f"http://{local_ip}:8501/app/static/mobile_app.html"
+    apk_url = f"http://{local_ip}:8501/app/static/IT_Saha_Takip.apk"
+
+    # Cloudflare HTTPS tünel URL'si (iPhone / Safari için)
+    tunnel_url = ""
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    tf = os.path.join(base_dir, ".cloudflare_tunnel_url")
+    if os.path.exists(tf):
+        try:
+            with open(tf, "r", encoding="utf-8") as f:
+                u = f.read().strip()
+                if u.startswith("https://"):
+                    tunnel_url = f"{u}/app/static/mobile_app.html"
+        except Exception:
+            pass
+
+    local_qr = make_qr_b64(local_url)
+    apk_qr = make_qr_b64(apk_url)
+    tunnel_qr = make_qr_b64(tunnel_url)
+
+    return {
+        "local_ip": local_ip,
+        "local_url": local_url,
+        "local_qr": local_qr,
+        "apk_url": apk_url,
+        "apk_qr": apk_qr,
+        "tunnel_url": tunnel_url,
+        "tunnel_qr": tunnel_qr
+    }
+
 
 
 # ─────────────────────────────────────────────
@@ -1837,18 +1867,35 @@ def main():
             """, unsafe_allow_html=True)
             
             # Mobil erişim QR kod kartı
-            local_ip, mobile_url, qr_b64 = render_mobile_qr_widget()
-            qr_img_html = f"<img src='data:image/png;base64,{qr_b64}' style='width:110px; border-radius:8px; margin-top:6px; background:#fff; padding:4px;'>" if qr_b64 else ""
-            
+            qr_info = render_mobile_qr_widget()
+            local_qr_img = f"<img src='data:image/png;base64,{qr_info['local_qr']}' style='width:90px; border-radius:6px; background:#fff; padding:3px;'>" if qr_info['local_qr'] else ""
+            apk_qr_img = f"<img src='data:image/png;base64,{qr_info['apk_qr']}' style='width:90px; border-radius:6px; background:#fff; padding:3px;'>" if qr_info['apk_qr'] else ""
+            tunnel_qr_img = f"<img src='data:image/png;base64,{qr_info['tunnel_qr']}' style='width:90px; border-radius:6px; background:#fff; padding:3px;'>" if qr_info['tunnel_qr'] else ""
+
             st.markdown(f"""
-            <div style='background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; margin-top:12px; text-align:center;'>
-                <span style='font-size:9.5px; color:rgba(180,210,240,0.5); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;'>📱 MOBİL ERİŞİM (AYNI Wİ-Fİ)</span>
-                <div style='margin-top:4px;'>{qr_img_html}</div>
-                <div style='font-size:11px; color:#60B4FF; font-weight:600; margin-top:6px;'>{mobile_url}</div>
-                <div style='font-size:9.5px; color:rgba(180,210,240,0.5); margin-top:2px;'>Kameranızla QR kodu taratarak telefondan bağlanın</div>
-            </div>
+            <div style='background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px; margin-top:12px;'>
+                <span style='font-size:10px; color:#38BDF8; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;'>📱 MOBİL ERİŞİM & İNDİRME</span>
+                
+                <!-- Android APK -->
+                <div style='margin-top:10px; padding:8px; background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); border-radius:8px; text-align:center;'>
+                    <div style='font-size:11px; font-weight:700; color:#34D399;'>🤖 Android Uygulaması (.APK)</div>
+                    <div style='margin:4px 0;'>{apk_qr_img}</div>
+                    <a href='{qr_info["apk_url"]}' target='_blank' style='font-size:10px; color:#60A5FA; text-decoration:none; word-break:break-all;'>İndirmek İçin Dokunun</a>
+                </div>
+
+                <!-- iPhone / Safari HTTPS -->
+                <div style='margin-top:8px; padding:8px; background:rgba(59,130,246,0.06); border:1px solid rgba(59,130,246,0.2); border-radius:8px; text-align:center;'>
+                    <div style='font-size:11px; font-weight:700; color:#60A5FA;'>🍎 iPhone (Safari HTTPS PWA)</div>
+                    {'<div style="margin:4px 0;">' + tunnel_qr_img + '</div><div style="font-size:9.5px; color:#94A3B8;">Safari ile taratıp Ana Ekrana Ekle\'ye basın</div>' if qr_info['tunnel_url'] else '<div style="font-size:9.5px; color:#94A3B8; margin-top:3px;">tunnel_runner.py çalıştırıldığında HTTPS URL aktif olur</div>'}
+                </div>
+
+                <!-- Yerel Wi-Fi -->
+                <div style='margin-top:8px; font-size:10px; color:#94A3B8; text-align:center;'>
+                    <b>Yerel IP:</b> <span style='color:#F8FAFC;'>{qr_info["local_ip"]}</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
+
             
         with col_content:
             render_active_tab(st.session_state.active_tab)
