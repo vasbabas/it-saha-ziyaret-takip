@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../services/database_service.dart';
 import '../services/sync_service.dart';
@@ -33,7 +32,7 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
   ];
 
   final _templates = {
-    '🖥️ Sunucu Rutin Bakımı': {
+    '🖥️ Sunucu Bakımı': {
       'subject': 'Sunucu Rutin Bakımı ve Sağlık Kontrolü',
       'notes':
           '— Sunucu disk doluluk oranları kontrol edildi.\n— Windows Update uygulandı.\n— Event Viewer günlükleri incelendi, hata yok.',
@@ -42,12 +41,12 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
       'subject': 'Firewall ve VLAN Kural Güncellemesi',
       'notes': '— Güvenlik duvarı kuralları güncellendi.\n— VPN erişim izinleri denetlendi.',
     },
-    '💻 PC Format / Kurulum': {
+    '💻 PC Kurulumu': {
       'subject': 'Kullanıcı Bilgisayarı Format ve Kurulum',
       'notes':
           '— Windows 11 yeniden kuruldu.\n— Domain ve Antivirüs tanımlamaları yapıldı.',
     },
-    '💾 Yedekleme Kontrolü': {
+    '💾 Yedek Kontrolü': {
       'subject': 'Yedekleme Kontrolü ve Veri Sağlığı',
       'notes': '— Veeam/NAS yedekleme günlükleri incelendi.\n— Test restore işlemi yapıldı.',
     },
@@ -60,8 +59,10 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
   }
 
   Future<void> _loadCompanies() async {
-    final names = await DatabaseService.getCompanyNames();
-    setState(() => _companySuggestions = names);
+    try {
+      final names = await DatabaseService.getCompanyNames();
+      if (mounted) setState(() => _companySuggestions = names);
+    } catch (_) {}
   }
 
   Future<void> _pickDate() async {
@@ -80,47 +81,76 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
     if (picked != null) setState(() => _selectedDate = picked);
   }
 
+  String _formatDateDisplay(DateTime dt) {
+    final months = [
+      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+    ];
+    return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+  }
+
+  String _formatDateISO(DateTime dt) {
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
   void _applyTemplate(String key) {
-    final t = _templates[key]!;
-    _subjectCtrl.text = t['subject']!;
-    _notesCtrl.text = t['notes']!;
-    setState(() {});
+    final t = _templates[key];
+    if (t != null) {
+      _subjectCtrl.text = t['subject']!;
+      _notesCtrl.text = t['notes']!;
+      setState(() {});
+    }
   }
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
-    final visit = Visit(
-      visitDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
-      company: _companyCtrl.text.trim(),
-      subject: _subjectCtrl.text.trim().isEmpty ? 'Genel Destek' : _subjectCtrl.text.trim(),
-      technician: _category,
-      duration: _duration,
-      status: _status,
-      workNotes: _notesCtrl.text.trim(),
-      synced: false,
-    );
-    await DatabaseService.insertVisit(visit);
-    setState(() => _saving = false);
+    try {
+      final visit = Visit(
+        visitDate: _formatDateISO(_selectedDate),
+        company: _companyCtrl.text.trim(),
+        subject: _subjectCtrl.text.trim().isEmpty ? 'Genel Destek' : _subjectCtrl.text.trim(),
+        technician: _category,
+        duration: _duration,
+        status: _status,
+        workNotes: _notesCtrl.text.trim(),
+        synced: false,
+      );
+      await DatabaseService.insertVisit(visit);
 
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('✅ Kayıt eklendi! Eşitleme sekmesinden PC\'ye gönderin.'),
-        backgroundColor: Color(0xFF059669),
-        duration: Duration(seconds: 3),
-      ),
-    );
-    _companyCtrl.clear();
-    _subjectCtrl.clear();
-    _notesCtrl.clear();
-    setState(() {
-      _selectedDate = DateTime.now();
-      _duration = 1.0;
-    });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Kayıt eklendi! Eşitleme sekmesinden PC\'ye gönderin.'),
+          backgroundColor: Color(0xFF059669),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      _companyCtrl.clear();
+      _subjectCtrl.clear();
+      _notesCtrl.clear();
+      setState(() {
+        _selectedDate = DateTime.now();
+        _duration = 1.0;
+        _saving = false;
+      });
 
-    // Auto-sync in background
-    SyncService.fullSync();
+      // Auto-sync in background
+      SyncService.fullSync();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -136,7 +166,7 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
           padding: const EdgeInsets.all(16),
           children: [
             // Quick templates
-            _buildSectionTitle('⚡ Hızlı Şablon'),
+            _buildSectionTitle('⚡ HIZLI ŞABLON SEÇİN'),
             const SizedBox(height: 8),
             SizedBox(
               height: 42,
@@ -162,7 +192,7 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
             const SizedBox(height: 20),
 
             // Date
-            _buildSectionTitle('📅 Tarih'),
+            _buildSectionTitle('📅 TARİH'),
             const SizedBox(height: 6),
             InkWell(
               onTap: _pickDate,
@@ -177,7 +207,7 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      DateFormat('dd MMMM yyyy', 'tr').format(_selectedDate),
+                      _formatDateDisplay(_selectedDate),
                       style: const TextStyle(color: Colors.white, fontSize: 15),
                     ),
                     const Icon(Icons.calendar_today, color: Color(0xFF3B82F6), size: 20),
@@ -188,47 +218,32 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
             const SizedBox(height: 16),
 
             // Company
-            _buildSectionTitle('🏢 Firma / Kurum *'),
+            _buildSectionTitle('🏢 FİRMA / KURUM ADI *'),
             const SizedBox(height: 6),
-            Autocomplete<String>(
-              optionsBuilder: (value) {
-                if (value.text.isEmpty) return const [];
-                return _companySuggestions.where(
-                  (s) => s.toLowerCase().contains(value.text.toLowerCase()),
-                );
-              },
-              onSelected: (s) => _companyCtrl.text = s,
-              fieldViewBuilder: (ctx, ctrl, fn, onSubmit) {
-                // Sync external controller text
-                ctrl.text = _companyCtrl.text;
-                ctrl.addListener(() => _companyCtrl.text = ctrl.text);
-                return TextFormField(
-                  controller: ctrl,
-                  focusNode: fn,
-                  decoration: const InputDecoration(
-                    hintText: 'Firma adı girin...',
-                    prefixIcon: Icon(Icons.business, color: Color(0xFF64748B)),
-                  ),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Firma adı zorunlu' : null,
-                );
-              },
+            TextFormField(
+              controller: _companyCtrl,
+              decoration: const InputDecoration(
+                hintText: 'Firma adını girin (Örn: ABC A.Ş.)...',
+                prefixIcon: Icon(Icons.business, color: Color(0xFF64748B)),
+              ),
+              validator: (v) => v == null || v.trim().isEmpty ? 'Firma adı zorunlu' : null,
             ),
             const SizedBox(height: 16),
 
             // Subject
-            _buildSectionTitle('📌 Çalışma Konusu'),
+            _buildSectionTitle('📌 ÇALIŞMA KONUSU'),
             const SizedBox(height: 6),
             TextFormField(
               controller: _subjectCtrl,
               decoration: const InputDecoration(
-                hintText: 'Örn: Sunucu Bakımı...',
+                hintText: 'Örn: Sunucu Bakımı ve Güncelleme...',
                 prefixIcon: Icon(Icons.work_outline, color: Color(0xFF64748B)),
               ),
             ),
             const SizedBox(height: 16),
 
             // Category
-            _buildSectionTitle('🗂️ Kategori'),
+            _buildSectionTitle('🗂️ KATEGORİ'),
             const SizedBox(height: 6),
             DropdownButtonFormField<String>(
               value: _category,
@@ -248,13 +263,12 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionTitle('⏱️ Süre (Saat)'),
+                      _buildSectionTitle('⏱️ SÜRE (SAAT)'),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<double>(
                         value: _duration,
                         dropdownColor: const Color(0xFF1E293B),
                         decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.timer_outlined, color: Color(0xFF64748B)),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                         ),
                         items: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0]
@@ -270,7 +284,7 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionTitle('✅ Durum'),
+                      _buildSectionTitle('✅ DURUM'),
                       const SizedBox(height: 6),
                       DropdownButtonFormField<String>(
                         value: _status,
@@ -292,13 +306,13 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
             const SizedBox(height: 16),
 
             // Notes
-            _buildSectionTitle('📝 Teknik Notlar *'),
+            _buildSectionTitle('📝 TEKNİK NOTLAR *'),
             const SizedBox(height: 6),
             TextFormField(
               controller: _notesCtrl,
               maxLines: 5,
               decoration: const InputDecoration(
-                hintText: 'Yapılan teknik işlemleri buraya yazın...',
+                hintText: 'Yapılan teknik işlemleri detaylıca yazın...',
                 alignLabelWithHint: true,
               ),
               validator: (v) => v == null || v.trim().isEmpty ? 'Notlar zorunlu' : null,
@@ -321,7 +335,7 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 30),
           ],
         ),
       ),
@@ -332,8 +346,8 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
     return Text(
       text,
       style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
+        fontSize: 11.5,
+        fontWeight: FontWeight.w700,
         color: Color(0xFF94A3B8),
         letterSpacing: 0.5,
       ),

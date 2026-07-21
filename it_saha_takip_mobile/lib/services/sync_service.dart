@@ -7,7 +7,7 @@ import 'database_service.dart';
 class SyncService {
   static const _ipKey = 'pc_ip_address';
   static const _portKey = 'pc_port';
-  static const int _timeout = 8;
+  static const int _timeout = 12;
 
   static Future<String> getSavedIP() async {
     final prefs = await SharedPreferences.getInstance();
@@ -58,18 +58,24 @@ class SyncService {
         final payload = jsonEncode({
           'version': '3.0',
           'data': {
-            'visits': unsyncedVisits.map((v) => v.toJson()).toList(),
+            'visits': unsyncedVisits.map((v) {
+              final m = v.toJson();
+              m['contact'] = ''; // Ensure contact field is sent for PC SQLite
+              return m;
+            }).toList(),
             'company_notes': [],
             'todos': [],
           }
         });
+
         final uploadRes = await http
             .post(
               Uri.parse('${_baseUrl(ip, port)}/api/sync_upload'),
-              headers: {'Content-Type': 'application/json'},
+              headers: {'Content-Type': 'application/json; charset=utf-8'},
               body: payload,
             )
             .timeout(const Duration(seconds: _timeout));
+
         if (uploadRes.statusCode == 200) {
           final ids = unsyncedVisits
               .where((v) => v.id != null)
@@ -86,45 +92,54 @@ class SyncService {
           .timeout(const Duration(seconds: _timeout));
 
       if (getRes.statusCode != 200) {
-        return SyncResult(success: false, message: 'Sunucudan veri alınamadı.');
+        return SyncResult(success: false, message: 'Sunucudan veri yanıtı alınamadı (HTTP ${getRes.statusCode}).');
       }
 
       final data = jsonDecode(getRes.body);
       final pcData = data['data'] ?? data;
 
       // Import visits
-      if (pcData['visits'] != null) {
-        final visits = (pcData['visits'] as List)
-            .map((j) => Visit.fromJson(j))
-            .toList();
+      if (pcData['visits'] != null && pcData['visits'] is List) {
+        final visits = <Visit>[];
+        for (final j in pcData['visits']) {
+          try {
+            visits.add(Visit.fromJson(j as Map<String, dynamic>));
+          } catch (_) {}
+        }
         await DatabaseService.upsertVisitsFromSync(visits);
       }
 
       // Import company notes
-      if (pcData['company_notes'] != null) {
-        final notes = (pcData['company_notes'] as List)
-            .map((j) => CompanyNote.fromJson(j))
-            .toList();
+      if (pcData['company_notes'] != null && pcData['company_notes'] is List) {
+        final notes = <CompanyNote>[];
+        for (final j in pcData['company_notes']) {
+          try {
+            notes.add(CompanyNote.fromJson(j as Map<String, dynamic>));
+          } catch (_) {}
+        }
         await DatabaseService.upsertCompanyNotesFromSync(notes);
       }
 
       // Import todos
-      if (pcData['todos'] != null) {
-        final todos = (pcData['todos'] as List)
-            .map((j) => Todo.fromJson(j))
-            .toList();
+      if (pcData['todos'] != null && pcData['todos'] is List) {
+        final todos = <Todo>[];
+        for (final j in pcData['todos']) {
+          try {
+            todos.add(Todo.fromJson(j as Map<String, dynamic>));
+          } catch (_) {}
+        }
         await DatabaseService.upsertTodosFromSync(todos);
       }
 
       return SyncResult(
         success: true,
-        message: 'Eşitleme tamamlandı! $pushed yeni kayıt gönderildi.',
+        message: '✅ Eşitleme tamamlandı! $pushed yeni kayıt PC\'ye gönderildi.',
         pushed: pushed,
       );
     } catch (e) {
       return SyncResult(
         success: false,
-        message: 'Bağlantı hatası: Bilgisayar açık ve aynı ağda mı?',
+        message: 'Eşitleme Hatası: $e',
       );
     }
   }

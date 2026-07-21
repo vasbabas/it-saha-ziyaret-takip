@@ -1,3 +1,26 @@
+double _parseDouble(dynamic val) {
+  if (val == null) return 1.0;
+  if (val is num) return val.toDouble();
+  if (val is String) return double.tryParse(val) ?? 1.0;
+  return 1.0;
+}
+
+bool _parseBool(dynamic val) {
+  if (val == null) return false;
+  if (val is bool) return val;
+  if (val is num) return val == 1;
+  if (val is String) return val == '1' || val.toLowerCase() == 'true';
+  return false;
+}
+
+int? _parseInt(dynamic val) {
+  if (val == null) return null;
+  if (val is int) return val;
+  if (val is num) return val.toInt();
+  if (val is String) return int.tryParse(val);
+  return null;
+}
+
 class Visit {
   final int? id;
   final String visitDate;
@@ -40,32 +63,20 @@ class Visit {
 
   factory Visit.fromMap(Map<String, dynamic> map) {
     return Visit(
-      id: map['id'],
-      visitDate: map['visit_date'] ?? '',
-      company: map['company'] ?? '',
-      subject: map['subject'] ?? '',
-      technician: map['technician'] ?? '',
-      duration: (map['duration'] ?? 1.0).toDouble(),
-      status: map['status'] ?? 'Tamamlandi',
-      workNotes: map['work_notes'] ?? '',
-      createdAt: map['created_at'],
-      synced: (map['synced'] ?? 0) == 1,
+      id: _parseInt(map['id']),
+      visitDate: (map['visit_date'] ?? map['date'] ?? '').toString(),
+      company: (map['company'] ?? '').toString(),
+      subject: (map['subject'] ?? map['work_type'] ?? '').toString(),
+      technician: (map['technician'] ?? map['category'] ?? '').toString(),
+      duration: _parseDouble(map['duration']),
+      status: (map['status'] ?? 'Tamamlandi').toString(),
+      workNotes: (map['work_notes'] ?? map['notes'] ?? '').toString(),
+      createdAt: map['created_at']?.toString(),
+      synced: _parseBool(map['synced']),
     );
   }
 
-  factory Visit.fromJson(Map<String, dynamic> json) {
-    return Visit(
-      visitDate: json['visit_date'] ?? '',
-      company: json['company'] ?? '',
-      subject: json['subject'] ?? json['work_type'] ?? '',
-      technician: json['technician'] ?? json['category'] ?? '',
-      duration: (json['duration'] ?? 1.0).toDouble(),
-      status: json['status'] ?? 'Tamamlandi',
-      workNotes: json['work_notes'] ?? json['notes'] ?? '',
-      createdAt: json['created_at'],
-      synced: true,
-    );
-  }
+  factory Visit.fromJson(Map<String, dynamic> json) => Visit.fromMap(json);
 
   Map<String, dynamic> toJson() => toMap();
 }
@@ -103,13 +114,13 @@ class CompanyNote {
 
   factory CompanyNote.fromMap(Map<String, dynamic> map) {
     return CompanyNote(
-      id: map['id'],
-      company: map['company'] ?? '',
-      ipSubnet: map['ip_subnet'],
-      vpnDetails: map['vpn_details'],
-      credentials: map['credentials'],
-      otherNotes: map['other_notes'],
-      updatedAt: map['updated_at'],
+      id: _parseInt(map['id']),
+      company: (map['company'] ?? '').toString(),
+      ipSubnet: map['ip_subnet']?.toString(),
+      vpnDetails: map['vpn_details']?.toString(),
+      credentials: map['credentials']?.toString(),
+      otherNotes: map['other_notes']?.toString(),
+      updatedAt: map['updated_at']?.toString(),
     );
   }
 
@@ -147,12 +158,12 @@ class Todo {
 
   factory Todo.fromMap(Map<String, dynamic> map) {
     return Todo(
-      id: map['id'],
-      title: map['title'] ?? map['description'] ?? '',
-      isDone: (map['is_done'] ?? map['done'] ?? 0) == 1,
-      dueDate: map['due_date'],
-      createdAt: map['created_at'],
-      synced: (map['synced'] ?? 0) == 1,
+      id: _parseInt(map['id']),
+      title: (map['title'] ?? map['description'] ?? '').toString(),
+      isDone: _parseBool(map['is_done'] ?? map['done']),
+      dueDate: map['due_date']?.toString(),
+      createdAt: map['created_at']?.toString(),
+      synced: _parseBool(map['synced']),
     );
   }
 
