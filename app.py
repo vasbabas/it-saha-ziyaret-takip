@@ -1158,9 +1158,12 @@ def tab_all_records():
                     if v.get("image_data"):
                         import base64
                         try:
-                            st.image(base64.b64decode(v["image_data"]), caption="📷 Ekteki Fotoğraf", use_column_width=True)
-                        except Exception:
-                            pass
+                            raw_b64 = str(v["image_data"]).strip()
+                            if "," in raw_b64:
+                                raw_b64 = raw_b64.split(",")[1]
+                            st.image(base64.b64decode(raw_b64), caption="📷 Ekteki Fotoğraf", use_container_width=True)
+                        except Exception as img_err:
+                            st.caption(f"⚠️ Görsel gösterilemedi: {img_err}")
                 with ec:
                     st.markdown("**✏️ Kaydı Güncelle**")
                     with st.form(f"ef_{vid}"):
@@ -1599,6 +1602,17 @@ def tab_inventory():
                 with c2:
                     st.markdown(f"**🔑 Erisim Bilgileri:**\n```\n{n.get('credentials') or '—'}\n```")
                     st.markdown(f"**📝 Diger Notlar:** {n.get('other_notes') or '—'}")
+
+                if n.get("image_data"):
+                    import base64
+                    try:
+                        raw_b64 = str(n["image_data"]).strip()
+                        if "," in raw_b64:
+                            raw_b64 = raw_b64.split(",")[1]
+                        st.image(base64.b64decode(raw_b64), caption="📷 Envanter / Cihaz Fotoğrafı", use_container_width=True)
+                    except Exception as img_err:
+                        st.caption(f"⚠️ Görsel gösterilemedi: {img_err}")
+
                 if st.button(f"🗑️ {n['company']} Envanterini Sil", key=f"del_exp_inv_{n['company']}"):
                     db.delete_company_notes(n['company'])
                     invalidate_caches()
