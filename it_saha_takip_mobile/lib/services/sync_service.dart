@@ -62,16 +62,21 @@ class SyncService {
     }
 
     try {
-      // 1. Fetch unsynced items from mobile database
+      // 1. Fetch unsynced items & deleted items tracking from mobile database
       final unsyncedVisits = await DatabaseService.getUnsyncedVisits();
       final unsyncedNotes = await DatabaseService.getUnsyncedCompanyNotes();
       final unsyncedTodos = await DatabaseService.getUnsyncedTodos();
+      final deletedPayload = await DatabaseService.getDeletedItemsPayload();
+
+      final hasDeleted = (deletedPayload['visits']?.isNotEmpty ?? false) ||
+          (deletedPayload['company_notes']?.isNotEmpty ?? false) ||
+          (deletedPayload['todos']?.isNotEmpty ?? false);
 
       int pushedVisits = 0;
       int pushedNotes = 0;
       int pushedTodos = 0;
 
-      if (unsyncedVisits.isNotEmpty || unsyncedNotes.isNotEmpty || unsyncedTodos.isNotEmpty) {
+      if (unsyncedVisits.isNotEmpty || unsyncedNotes.isNotEmpty || unsyncedTodos.isNotEmpty || hasDeleted) {
         final payload = jsonEncode({
           'version': '3.0',
           'data': {
@@ -82,7 +87,8 @@ class SyncService {
             }).toList(),
             'company_notes': unsyncedNotes.map((n) => n.toJson()).toList(),
             'todos': unsyncedTodos.map((t) => t.toJson()).toList(),
-          }
+          },
+          'deleted': deletedPayload,
         });
 
         final uploadRes = await http
@@ -94,6 +100,7 @@ class SyncService {
             .timeout(const Duration(seconds: _timeout));
 
         if (uploadRes.statusCode == 200) {
+          await DatabaseService.clearDeletedItems();
           if (unsyncedVisits.isNotEmpty) {
             final ids = unsyncedVisits.where((v) => v.id != null).map((v) => v.id!).toList();
             await DatabaseService.markVisitsSynced(ids);

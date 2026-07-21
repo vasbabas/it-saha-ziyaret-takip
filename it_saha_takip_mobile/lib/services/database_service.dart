@@ -16,7 +16,7 @@ class DatabaseService {
     final path = join(dbPath, 'it_saha_takip.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE visits (
@@ -54,6 +54,13 @@ class DatabaseService {
             synced INTEGER DEFAULT 0
           )
         ''');
+        await db.execute('''
+          CREATE TABLE deleted_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_type TEXT NOT NULL,
+            item_id TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -61,8 +68,63 @@ class DatabaseService {
             await db.execute('ALTER TABLE company_notes ADD COLUMN synced INTEGER DEFAULT 0');
           } catch (_) {}
         }
+        if (oldVersion < 3) {
+          try {
+            await db.execute('''
+              CREATE TABLE IF NOT EXISTS deleted_items (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                item_type TEXT NOT NULL,
+                item_id TEXT NOT NULL
+              )
+            ''');
+          } catch (_) {}
+        }
       },
     );
+  }
+
+  // ── DELETED ITEMS TRACKING ──────────────────────────────────────
+
+  static Future<void> trackDeletedItem(String type, String itemId) async {
+    final db = await database;
+    await db.insert('deleted_items', {
+      'item_type': type,
+      'item_id': itemId,
+    });
+  }
+
+  static Future<Map<String, List<dynamic>>> getDeletedItemsPayload() async {
+    final db = await database;
+    final rows = await db.query('deleted_items');
+
+    final visits = <int>[];
+    final notes = <String>[];
+    final todos = <int>[];
+
+    for (final r in rows) {
+      final type = r['item_type'] as String;
+      final itemId = r['item_id'] as String;
+      if (type == 'visit') {
+        final parsed = int.tryParse(itemId);
+        if (parsed != null) visits.add(parsed);
+      } else if (type == 'company_note') {
+        notes.add(itemId);
+      } else if (type == 'todo') {
+        final parsed = int.tryParse(itemId);
+        if (parsed != null) todos.add(parsed);
+      }
+    }
+
+    return {
+      'visits': visits,
+      'company_notes': notes,
+      'todos': todos,
+    };
+  }
+
+  static Future<void> clearDeletedItems() async {
+    final db = await database;
+    await db.delete('deleted_items');
   }
 
   // ── VISITS ──────────────────────────────────────────────────────
@@ -71,6 +133,12 @@ class DatabaseService {
     final db = await database;
     return await db.insert('visits', visit.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  static Future<void> deleteVisit(int id) async {
+    final db = await database;
+    await db.delete('visits', where: 'id = ?', whereArgs: [id]);
+    await trackDeletedItem('visit', id.toString());
   }
 
   static Future<List<Visit>> getVisits({String? query}) async {
@@ -89,14 +157,16 @@ class DatabaseService {
     return maps.map((m) => Visit.fromMap(m)).toList();
   }
 
-  static Future<void> upsertVisitsFromSync(List<Visit> visits) async {
+  static Future<void> syncReplaceVisits(List<Visit> visits) async {
     final db = await database;
-    final batch = db.batch();
-    for (final v in visits) {
-      batch.insert('visits', v.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.ignore);
-    }
-    await batch.commit(noResult: true);
+    await db.transaction((txn) async {
+      await txn.delete('visits', where: 'synced = 1');
+      for (final v in visits) {
+        final map = v.toMap();
+        map['synced'] = 1;
+        await txn.insert('visits', map, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
   }
 
   static Future<List<Visit>> getUnsyncedVisits() async {
@@ -125,6 +195,7 @@ class DatabaseService {
   static Future<void> deleteCompanyNote(String company) async {
     final db = await database;
     await db.delete('company_notes', where: 'LOWER(company) = ?', whereArgs: [company.trim().toLowerCase()]);
+    await trackDeletedItem('company_note', company.trim());
   }
 
   static Future<List<CompanyNote>> getCompanyNotes({String? query}) async {
@@ -198,6 +269,7 @@ class DatabaseService {
   static Future<void> deleteTodo(int id) async {
     final db = await database;
     await db.delete('todos', where: 'id = ?', whereArgs: [id]);
+    await trackDeletedItem('todo', id.toString());
   }
 
   static Future<void> syncReplaceTodos(List<Todo> todos) async {

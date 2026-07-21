@@ -94,33 +94,61 @@ class _RecordsScreenState extends State<RecordsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    v.company,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF38BDF8),
-                    ),
+                Text(
+                  v.company,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF38BDF8),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: isCompleted
-                        ? const Color(0xFF064E3B)
-                        : const Color(0xFF78350F),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    isCompleted ? '✅ Tamamlandı' : '⏳ Devam Ediyor',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: isCompleted ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: isCompleted
+                            ? const Color(0xFF064E3B)
+                            : const Color(0xFF78350F),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        isCompleted ? '✅ Tamamlandı' : '⏳ Devam Ediyor',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: isCompleted ? const Color(0xFF34D399) : const Color(0xFFFBBF24),
+                        ),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                      icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 18),
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            backgroundColor: const Color(0xFF1E293B),
+                            title: const Text('🗑️ Kayıt Silinsin mi?', style: TextStyle(color: Colors.white)),
+                            content: Text('${v.company} firmasına ait bu ziyaret kaydı silinecektir.', style: const TextStyle(color: Color(0xFFCBD5E1))),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+                              TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil', style: TextStyle(color: Colors.red))),
+                            ],
+                          ),
+                        );
+                        if (confirm == true && v.id != null) {
+                          await DatabaseService.deleteVisit(v.id!);
+                          _load(_searchCtrl.text);
+                          SyncService.fullSync();
+                        }
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),

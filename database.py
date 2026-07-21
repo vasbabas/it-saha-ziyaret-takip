@@ -854,6 +854,19 @@ def import_data_json(json_str: str, mode: str = "merge") -> tuple[bool, str]:
                 VALUES (?, ?)
             """, (s.get("key"), s.get("value")))
 
+        # 6. Mobilden iletilen Silme İstekleri (deleted)
+        deleted = payload.get("deleted", {})
+        if isinstance(deleted, dict):
+            for comp in deleted.get("company_notes", []):
+                if comp:
+                    cursor.execute("DELETE FROM company_notes WHERE LOWER(company) = ?", (str(comp).strip().lower(),))
+            for v_id in deleted.get("visits", []):
+                if v_id:
+                    cursor.execute("DELETE FROM visits WHERE id = ?", (v_id,))
+            for t_id in deleted.get("todos", []):
+                if t_id:
+                    cursor.execute("DELETE FROM todos WHERE id = ?", (t_id,))
+
         conn.commit()
         conn.close()
         return True, "Tüm veriler başarıyla içe aktarıldı ve işlendi!"
