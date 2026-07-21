@@ -62,20 +62,26 @@ class SyncService {
     }
 
     try {
-      // 1. Push unsynced visits to PC
+      // 1. Fetch unsynced items from mobile database
       final unsyncedVisits = await DatabaseService.getUnsyncedVisits();
-      int pushed = 0;
-      if (unsyncedVisits.isNotEmpty) {
+      final unsyncedNotes = await DatabaseService.getUnsyncedCompanyNotes();
+      final unsyncedTodos = await DatabaseService.getUnsyncedTodos();
+
+      int pushedVisits = 0;
+      int pushedNotes = 0;
+      int pushedTodos = 0;
+
+      if (unsyncedVisits.isNotEmpty || unsyncedNotes.isNotEmpty || unsyncedTodos.isNotEmpty) {
         final payload = jsonEncode({
           'version': '3.0',
           'data': {
             'visits': unsyncedVisits.map((v) {
               final m = v.toJson();
-              m['contact'] = ''; // Ensure contact field is set for Python SQLite
+              m['contact'] = ''; // Ensure contact field for PC SQLite
               return m;
             }).toList(),
-            'company_notes': [],
-            'todos': [],
+            'company_notes': unsyncedNotes.map((n) => n.toJson()).toList(),
+            'todos': unsyncedTodos.map((t) => t.toJson()).toList(),
           }
         });
 
@@ -88,12 +94,21 @@ class SyncService {
             .timeout(const Duration(seconds: _timeout));
 
         if (uploadRes.statusCode == 200) {
-          final ids = unsyncedVisits
-              .where((v) => v.id != null)
-              .map((v) => v.id!)
-              .toList();
-          await DatabaseService.markVisitsSynced(ids);
-          pushed = unsyncedVisits.length;
+          if (unsyncedVisits.isNotEmpty) {
+            final ids = unsyncedVisits.where((v) => v.id != null).map((v) => v.id!).toList();
+            await DatabaseService.markVisitsSynced(ids);
+            pushedVisits = unsyncedVisits.length;
+          }
+          if (unsyncedNotes.isNotEmpty) {
+            final names = unsyncedNotes.map((n) => n.company).toList();
+            await DatabaseService.markCompanyNotesSynced(names);
+            pushedNotes = unsyncedNotes.length;
+          }
+          if (unsyncedTodos.isNotEmpty) {
+            final ids = unsyncedTodos.where((t) => t.id != null).map((t) => t.id!).toList();
+            await DatabaseService.markTodosSynced(ids);
+            pushedTodos = unsyncedTodos.length;
+          }
         }
       }
 
@@ -161,8 +176,10 @@ class SyncService {
 
       return SyncResult(
         success: true,
-        message: '✅ Eşitleme Tamamlandı!\n• Telefondan PC\'ye: $pushed yeni kayıt gönderildi.\n• PC\'den Telefona: $pulledVisits günlük, $pulledNotes envanter, $pulledTodos görev çekildi.',
-        pushed: pushed,
+        message: '✅ Eşitleme Tamamlandı!\n'
+            '• Gönderilen (Telefon ➔ PC): $pushedVisits kayıt, $pushedNotes envanter, $pushedTodos görev.\n'
+            '• Alınan (PC ➔ Telefon): $pulledVisits kayıt, $pulledNotes envanter, $pulledTodos görev.',
+        pushed: pushedVisits + pushedNotes + pushedTodos,
       );
     } catch (e) {
       final errStr = e.toString();

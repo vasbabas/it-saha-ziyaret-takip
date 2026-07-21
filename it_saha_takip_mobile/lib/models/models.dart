@@ -89,6 +89,7 @@ class CompanyNote {
   final String? credentials;
   final String? otherNotes;
   final String? updatedAt;
+  final bool synced;
 
   CompanyNote({
     this.id,
@@ -98,6 +99,7 @@ class CompanyNote {
     this.credentials,
     this.otherNotes,
     this.updatedAt,
+    this.synced = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -109,6 +111,7 @@ class CompanyNote {
       'credentials': credentials,
       'other_notes': otherNotes,
       'updated_at': updatedAt ?? DateTime.now().toIso8601String(),
+      'synced': synced ? 1 : 0,
     };
   }
 
@@ -121,6 +124,7 @@ class CompanyNote {
       credentials: map['credentials']?.toString(),
       otherNotes: map['other_notes']?.toString(),
       updatedAt: map['updated_at']?.toString(),
+      synced: _parseBool(map['synced']),
     );
   }
 
@@ -157,9 +161,13 @@ class Todo {
   }
 
   factory Todo.fromMap(Map<String, dynamic> map) {
+    String t = (map['title'] ?? '').toString().trim();
+    if (t.isEmpty) t = (map['description'] ?? '').toString().trim();
+    if (t.isEmpty) t = (map['company'] ?? '').toString().trim();
+
     return Todo(
       id: _parseInt(map['id']),
-      title: (map['title'] ?? map['description'] ?? '').toString(),
+      title: t.isNotEmpty ? t : 'Yeni Görev',
       isDone: _parseBool(map['is_done'] ?? map['done']),
       dueDate: map['due_date']?.toString(),
       createdAt: map['created_at']?.toString(),

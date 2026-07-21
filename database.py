@@ -840,10 +840,11 @@ def import_data_json(json_str: str, mode: str = "merge") -> tuple[bool, str]:
         # 4. Firma Notlari
         notes = data.get("company_notes", [])
         for n in notes:
-            cursor.execute("""
-                INSERT OR REPLACE INTO company_notes (company, ip_subnet, vpn_details, credentials, other_notes, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (n.get("company"), n.get("ip_subnet"), n.get("vpn_details"), n.get("credentials"), n.get("other_notes"), n.get("updated_at")))
+            if n.get("company"):
+                cursor.execute("""
+                    INSERT OR REPLACE INTO company_notes (company, ip_subnet, vpn_details, credentials, other_notes, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, (n.get("company"), n.get("ip_subnet"), n.get("vpn_details"), n.get("credentials"), n.get("other_notes"), n.get("updated_at") or datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
         # 5. Ayarlar
         settings = data.get("settings", [])

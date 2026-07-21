@@ -16,7 +16,7 @@ class DatabaseService {
     final path = join(dbPath, 'it_saha_takip.db');
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE visits (
@@ -40,7 +40,8 @@ class DatabaseService {
             vpn_details TEXT,
             credentials TEXT,
             other_notes TEXT,
-            updated_at TEXT
+            updated_at TEXT,
+            synced INTEGER DEFAULT 0
           )
         ''');
         await db.execute('''
@@ -53,6 +54,13 @@ class DatabaseService {
             synced INTEGER DEFAULT 0
           )
         ''');
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          try {
+            await db.execute('ALTER TABLE company_notes ADD COLUMN synced INTEGER DEFAULT 0');
+          } catch (_) {}
+        }
       },
     );
   }
@@ -108,14 +116,20 @@ class DatabaseService {
 
   // ── COMPANY NOTES ──────────────────────────────────────────────
 
+  static Future<int> insertCompanyNote(CompanyNote note) async {
+    final db = await database;
+    return await db.insert('company_notes', note.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
   static Future<List<CompanyNote>> getCompanyNotes({String? query}) async {
     final db = await database;
     List<Map<String, dynamic>> maps;
     if (query != null && query.isNotEmpty) {
       maps = await db.query(
         'company_notes',
-        where: 'company LIKE ? OR ip_subnet LIKE ?',
-        whereArgs: ['%$query%', '%$query%'],
+        where: 'company LIKE ? OR ip_subnet LIKE ? OR other_notes LIKE ?',
+        whereArgs: ['%$query%', '%$query%', '%$query%'],
         orderBy: 'company ASC',
       );
     } else {
@@ -132,6 +146,21 @@ class DatabaseService {
           conflictAlgorithm: ConflictAlgorithm.replace);
     }
     await batch.commit(noResult: true);
+  }
+
+  static Future<List<CompanyNote>> getUnsyncedCompanyNotes() async {
+    final db = await database;
+    final maps = await db.query('company_notes', where: 'synced = 0');
+    return maps.map((m) => CompanyNote.fromMap(m)).toList();
+  }
+
+  static Future<void> markCompanyNotesSynced(List<String> companyNames) async {
+    final db = await database;
+    if (companyNames.isEmpty) return;
+    await db.rawUpdate(
+      'UPDATE company_notes SET synced = 1 WHERE company IN (${companyNames.map((_) => '?').join(',')})',
+      companyNames,
+    );
   }
 
   static Future<List<String>> getCompanyNames() async {
@@ -172,6 +201,21 @@ class DatabaseService {
           conflictAlgorithm: ConflictAlgorithm.ignore);
     }
     await batch.commit(noResult: true);
+  }
+
+  static Future<List<Todo>> getUnsyncedTodos() async {
+    final db = await database;
+    final maps = await db.query('todos', where: 'synced = 0');
+    return maps.map((m) => Todo.fromMap(m)).toList();
+  }
+
+  static Future<void> markTodosSynced(List<int> ids) async {
+    final db = await database;
+    if (ids.isEmpty) return;
+    await db.rawUpdate(
+      'UPDATE todos SET synced = 1 WHERE id IN (${ids.map((_) => '?').join(',')})',
+      ids,
+    );
   }
 
   // ── STATS ──────────────────────────────────────────────────────
