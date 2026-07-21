@@ -150,7 +150,7 @@ class SyncService {
         pulledVisits = visits.length;
       }
 
-      // Import company notes
+      // Import company notes (replace synced items with PC's active database)
       if (pcData['company_notes'] != null && pcData['company_notes'] is List) {
         final notes = <CompanyNote>[];
         for (final j in pcData['company_notes']) {
@@ -158,11 +158,11 @@ class SyncService {
             notes.add(CompanyNote.fromJson(j as Map<String, dynamic>));
           } catch (_) {}
         }
-        await DatabaseService.upsertCompanyNotesFromSync(notes);
+        await DatabaseService.syncReplaceCompanyNotes(notes);
         pulledNotes = notes.length;
       }
 
-      // Import todos
+      // Import todos (replace synced items with PC's active database)
       if (pcData['todos'] != null && pcData['todos'] is List) {
         final todos = <Todo>[];
         for (final j in pcData['todos']) {
@@ -170,7 +170,7 @@ class SyncService {
             todos.add(Todo.fromJson(j as Map<String, dynamic>));
           } catch (_) {}
         }
-        await DatabaseService.upsertTodosFromSync(todos);
+        await DatabaseService.syncReplaceTodos(todos);
         pulledTodos = todos.length;
       }
 

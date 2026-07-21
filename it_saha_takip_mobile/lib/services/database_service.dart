@@ -122,6 +122,11 @@ class DatabaseService {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  static Future<void> deleteCompanyNote(String company) async {
+    final db = await database;
+    await db.delete('company_notes', where: 'LOWER(company) = ?', whereArgs: [company.trim().toLowerCase()]);
+  }
+
   static Future<List<CompanyNote>> getCompanyNotes({String? query}) async {
     final db = await database;
     List<Map<String, dynamic>> maps;
@@ -138,14 +143,16 @@ class DatabaseService {
     return maps.map((m) => CompanyNote.fromMap(m)).toList();
   }
 
-  static Future<void> upsertCompanyNotesFromSync(List<CompanyNote> notes) async {
+  static Future<void> syncReplaceCompanyNotes(List<CompanyNote> notes) async {
     final db = await database;
-    final batch = db.batch();
-    for (final n in notes) {
-      batch.insert('company_notes', n.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.replace);
-    }
-    await batch.commit(noResult: true);
+    await db.transaction((txn) async {
+      await txn.delete('company_notes', where: 'synced = 1');
+      for (final n in notes) {
+        final map = n.toMap();
+        map['synced'] = 1;
+        await txn.insert('company_notes', map, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
   }
 
   static Future<List<CompanyNote>> getUnsyncedCompanyNotes() async {
@@ -193,14 +200,16 @@ class DatabaseService {
     await db.delete('todos', where: 'id = ?', whereArgs: [id]);
   }
 
-  static Future<void> upsertTodosFromSync(List<Todo> todos) async {
+  static Future<void> syncReplaceTodos(List<Todo> todos) async {
     final db = await database;
-    final batch = db.batch();
-    for (final t in todos) {
-      batch.insert('todos', t.toMap(),
-          conflictAlgorithm: ConflictAlgorithm.ignore);
-    }
-    await batch.commit(noResult: true);
+    await db.transaction((txn) async {
+      await txn.delete('todos', where: 'synced = 1');
+      for (final t in todos) {
+        final map = t.toMap();
+        map['synced'] = 1;
+        await txn.insert('todos', map, conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
   }
 
   static Future<List<Todo>> getUnsyncedTodos() async {

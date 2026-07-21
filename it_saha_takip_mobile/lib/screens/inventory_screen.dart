@@ -438,6 +438,44 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         ],
                       ),
                     ),
+
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              backgroundColor: const Color(0xFF1E293B),
+                              title: const Text('🗑️ Envanter Silinsin mi?', style: TextStyle(color: Colors.white)),
+                              content: Text('${n.company} firmasına ait envanter bilgileri silinecek.', style: const TextStyle(color: Color(0xFFCBD5E1))),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil', style: TextStyle(color: Colors.red))),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await DatabaseService.deleteCompanyNote(n.company);
+                            _load();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('🗑️ ${n.company} envanteri silindi.'),
+                                  backgroundColor: const Color(0xFFDC2626),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 16),
+                        label: const Text('Envanteri Sil', style: TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

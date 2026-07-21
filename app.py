@@ -1577,6 +1577,11 @@ def tab_inventory():
                 with c2:
                     st.markdown(f"**🔑 Erisim Bilgileri:**\n```\n{n.get('credentials') or '—'}\n```")
                     st.markdown(f"**📝 Diger Notlar:** {n.get('other_notes') or '—'}")
+                if st.button(f"🗑️ {n['company']} Envanterini Sil", key=f"del_exp_inv_{n['company']}"):
+                    db.delete_company_notes(n['company'])
+                    invalidate_caches()
+                    st.warning(f"🗑️ {n['company']} envanter notları silindi.")
+                    st.rerun()
     else:
         st.caption("Henuz envanter defterinde kayit bulunmuyor.")
 
