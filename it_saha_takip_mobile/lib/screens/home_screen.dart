@@ -14,29 +14,41 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  int _refreshCounter = 0;
 
-  final List<Widget> _screens = const [
-    NewVisitScreen(),
-    RecordsScreen(),
-    InventoryScreen(),
-    TodosScreen(),
-    SyncScreen(),
-  ];
+  Widget _buildScreen(int index) {
+    switch (index) {
+      case 0:
+        return const NewVisitScreen();
+      case 1:
+        return RecordsScreen(key: ValueKey('records_$_refreshCounter'));
+      case 2:
+        return InventoryScreen(key: ValueKey('inventory_$_refreshCounter'));
+      case 3:
+        return TodosScreen(key: ValueKey('todos_$_refreshCounter'));
+      case 4:
+        return SyncScreen(key: ValueKey('sync_$_refreshCounter'));
+      default:
+        return const NewVisitScreen();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: _buildScreen(_currentIndex),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: Color(0xFF334155), width: 1)),
         ),
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
+          onTap: (i) {
+            setState(() {
+              _currentIndex = i;
+              _refreshCounter++;
+            });
+          },
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.add_circle_outline),

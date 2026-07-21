@@ -820,18 +820,22 @@ def import_data_json(json_str: str, mode: str = "merge") -> tuple[bool, str]:
         # 3. Yapilacaklar
         todos = data.get("todos", [])
         for t in todos:
+            title_val = t.get("title") or t.get("description") or ""
+            if not title_val:
+                continue
+            is_done_val = 1 if t.get("is_done") in (1, True, "1") else 0
             if mode == "overwrite":
                 cursor.execute("""
                     INSERT INTO todos (id, visit_id, company, title, description, due_date, priority, is_done, done_at, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (t.get("id"), t.get("visit_id"), t.get("company"), t.get("title"), t.get("description"), t.get("due_date"), t.get("priority"), t.get("is_done"), t.get("done_at"), t.get("created_at")))
+                """, (t.get("id"), t.get("visit_id"), t.get("company") or "", title_val, t.get("description") or title_val, t.get("due_date"), t.get("priority") or "Normal", is_done_val, t.get("done_at"), t.get("created_at")))
             else:
-                cursor.execute("SELECT id FROM todos WHERE company=? AND title=?", (t.get("company"), t.get("title")))
+                cursor.execute("SELECT id FROM todos WHERE title=? OR description=?", (title_val, title_val))
                 if not cursor.fetchone():
                     cursor.execute("""
                         INSERT INTO todos (visit_id, company, title, description, due_date, priority, is_done, done_at, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (t.get("visit_id"), t.get("company"), t.get("title"), t.get("description"), t.get("due_date"), t.get("priority"), t.get("is_done"), t.get("done_at"), t.get("created_at")))
+                    """, (t.get("visit_id"), t.get("company") or "", title_val, t.get("description") or title_val, t.get("due_date"), t.get("priority") or "Normal", is_done_val, t.get("done_at"), t.get("created_at")))
 
         # 4. Firma Notlari
         notes = data.get("company_notes", [])

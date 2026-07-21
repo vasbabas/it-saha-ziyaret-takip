@@ -119,6 +119,10 @@ class SyncService {
       final data = jsonDecode(bodyText);
       final pcData = data['data'] ?? data;
 
+      int pulledVisits = 0;
+      int pulledNotes = 0;
+      int pulledTodos = 0;
+
       // Import visits
       if (pcData['visits'] != null && pcData['visits'] is List) {
         final visits = <Visit>[];
@@ -128,6 +132,7 @@ class SyncService {
           } catch (_) {}
         }
         await DatabaseService.upsertVisitsFromSync(visits);
+        pulledVisits = visits.length;
       }
 
       // Import company notes
@@ -139,6 +144,7 @@ class SyncService {
           } catch (_) {}
         }
         await DatabaseService.upsertCompanyNotesFromSync(notes);
+        pulledNotes = notes.length;
       }
 
       // Import todos
@@ -150,11 +156,12 @@ class SyncService {
           } catch (_) {}
         }
         await DatabaseService.upsertTodosFromSync(todos);
+        pulledTodos = todos.length;
       }
 
       return SyncResult(
         success: true,
-        message: '✅ Eşitleme başarılı! $pushed yeni kayıt PC\'ye aktarıldı.',
+        message: '✅ Eşitleme Tamamlandı!\n• Telefondan PC\'ye: $pushed yeni kayıt gönderildi.\n• PC\'den Telefona: $pulledVisits günlük, $pulledNotes envanter, $pulledTodos görev çekildi.',
         pushed: pushed,
       );
     } catch (e) {
