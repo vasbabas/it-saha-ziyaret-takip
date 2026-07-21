@@ -5,6 +5,10 @@ echo  ==========================================
 echo   IT Saha Ziyaret ve Takip Uygulamasi
 echo  ==========================================
 echo.
+
+:: Port 8501'i kullanan eski surec varsa temizle (Cakismanin onune gecmek icin)
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr :8501') do taskkill /f /pid %%a >nul 2>&1
+
 echo  [1/3] Python onbellek temizleniyor...
 if exist __pycache__ rmdir /s /q __pycache__
 echo  [2/3] AG erisimi icin port 8501 aciliyor...
