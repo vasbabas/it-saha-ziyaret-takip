@@ -447,7 +447,7 @@ class _NewVisitScreenState extends State<NewVisitScreen> {
                     top: 8,
                     right: 8,
                     child: CircleAvatar(
-                      backgroundColor: Colors.black85,
+                      backgroundColor: Colors.black87,
                       radius: 18,
                       child: IconButton(
                         icon: const Icon(Icons.close, color: Colors.red, size: 18),
